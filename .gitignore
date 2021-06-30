@@ -1,0 +1,21 @@
+# Compiled binaries
+*.bin
+
+# BootLoader.bin
+*.elf
+*.hex
+*.map
+*.out
+
+# Trash
+*.bak
+
+# Built files
+build/
+
+# VSC cash
+.vscode/
+
+AllDrivers/
+
+GitVersion.h
