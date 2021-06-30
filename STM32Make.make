@@ -43,15 +43,15 @@ Drivers/stm32h7xx_hal_gpio.c \
 Drivers/stm32h7xx_hal_pwr.c \
 Drivers/stm32h7xx_hal_pwr_ex.c \
 Drivers/stm32h7xx_hal_rcc.c \
-core/stm32h7xx_hal_msp.c \
-core/stm32h7xx_it.c \
-core/system_stm32h7xx.c
+main/stm32h7xx_hal_msp.c \
+main/stm32h7xx_it.c \
+main/system_stm32h7xx.c
 
 
 CPP_SOURCES = \
 Martef/martef.cpp \
 Martef/pins.cpp \
-core/main.cpp
+main/main.cpp
 
 
 # ASM sources
@@ -114,9 +114,9 @@ AS_INCLUDES = \
 
 # C includes
 C_INCLUDES =  \
--ICore \
 -IDrivers \
--IMartef
+-IMartef \
+-Imain
 
 
 

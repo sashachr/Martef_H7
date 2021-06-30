@@ -36,9 +36,9 @@ BUILD_DIR = build
 ######################################
 # C sources
 C_SOURCES =  \
-core/main.cpp \
-core/stm32h7xx_it.c \
-core/stm32h7xx_hal_msp.c \
+main/main.cpp \
+main/stm32h7xx_it.c \
+main/stm32h7xx_hal_msp.c \
 Drivers/stm32h7xx_hal_cortex.c \
 Drivers/stm32h7xx_hal_rcc.c \
 Drivers/stm32h7xx_hal_gpio.c \
@@ -48,7 +48,7 @@ Drivers/stm32h7xx_hal.c \
 Drivers/stm32h7xx_hal_exti.c \
 Martef/martef.cpp \
 Martef/pins.cpp \
-core/system_stm32h7xx.c  
+main/system_stm32h7xx.c  
 #Drivers/STM32H7xx_HAL_Driver/Src/stm32h7xx_hal_flash.c \
 #Drivers/STM32H7xx_HAL_Driver/Src/stm32h7xx_hal_flash_ex.c \
 #Drivers/STM32H7xx_HAL_Driver/Src/stm32h7xx_hal_rcc_ex.c \
@@ -116,7 +116,7 @@ AS_INCLUDES =
 
 # C includes
 C_INCLUDES =  \
--ICore \
+-Imain \
 -IMartef \
 -IDrivers
 #-IDrivers/CMSIS/Device/ST/STM32H7xx/Include \
