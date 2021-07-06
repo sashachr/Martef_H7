@@ -58,7 +58,6 @@ static void MX_GPIO_Init(void);
 /* USER CODE END 0 */
 
 void MartefInit();
-void MartefTick();
 
 /**
   * @brief  The application entry point.

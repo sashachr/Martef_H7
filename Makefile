@@ -47,7 +47,10 @@ Drivers/stm32h7xx_hal_pwr_ex.c \
 Drivers/stm32h7xx_hal.c \
 Drivers/stm32h7xx_hal_exti.c \
 Martef/martef.cpp \
+Martef/global.cpp \
 Martef/pins.cpp \
+Martef/systick.cpp \
+Martef/thread.cpp \
 main/system_stm32h7xx.c  
 #Drivers/STM32H7xx_HAL_Driver/Src/stm32h7xx_hal_flash.c \
 #Drivers/STM32H7xx_HAL_Driver/Src/stm32h7xx_hal_flash_ex.c \

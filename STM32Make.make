@@ -49,8 +49,11 @@ main/system_stm32h7xx.c
 
 
 CPP_SOURCES = \
+Martef/global.cpp \
 Martef/martef.cpp \
 Martef/pins.cpp \
+Martef/systick.cpp \
+Martef/thread.cpp \
 main/main.cpp
 
 
