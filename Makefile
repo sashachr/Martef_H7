@@ -39,6 +39,7 @@ C_SOURCES =  \
 main/main.cpp \
 main/stm32h7xx_it.c \
 main/stm32h7xx_hal_msp.c \
+main/system_stm32h7xx.c \
 Drivers/stm32h7xx_hal_cortex.c \
 Drivers/stm32h7xx_hal_rcc.c \
 Drivers/stm32h7xx_hal_gpio.c \
@@ -51,7 +52,9 @@ Martef/global.cpp \
 Martef/pins.cpp \
 Martef/systick.cpp \
 Martef/thread.cpp \
-main/system_stm32h7xx.c  
+Martef/gitversion.cpp \
+Martef/communication.cpp \
+Martef/command.cpp
 #Drivers/STM32H7xx_HAL_Driver/Src/stm32h7xx_hal_flash.c \
 #Drivers/STM32H7xx_HAL_Driver/Src/stm32h7xx_hal_flash_ex.c \
 #Drivers/STM32H7xx_HAL_Driver/Src/stm32h7xx_hal_rcc_ex.c \

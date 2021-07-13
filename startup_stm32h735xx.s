@@ -80,6 +80,24 @@ LoopCopyDataInit:
   adds r4, r0, r3
   cmp r4, r1
   bcc CopyDataInit
+
+/* Initialize .ramD1init */
+  ldr r0, =_sramD1init
+  ldr r1, =_eramD1init
+  ldr r2, =_siramD1init
+  movs r3, #0
+  b LoopCopyDataInitD1
+
+CopyDataInitD1:
+  ldr r4, [r2, r3]
+  str r4, [r0, r3]
+  adds r3, r3, #4
+
+LoopCopyDataInitD1:
+  adds r4, r0, r3
+  cmp r4, r1
+  bcc CopyDataInitD1
+
 /* Zero fill the bss segment. */
   ldr r2, =_sbss
   ldr r4, =_ebss

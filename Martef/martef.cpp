@@ -7,6 +7,8 @@
 #include "thread.h"
 #include "pins.h"
 #include "systick.h"
+#include "command.h"
+#include "communication.h"
 #include "martef.h"
 
 TimerStruct Timer;
@@ -20,14 +22,15 @@ void MartefInit() {
     Timer.percentFactor = 100.0F/Timer.Period;
 	ThreadsInit();
 	PinsInit();
+    CommunicationInit();
+    CommandInit();
 	SysTickInit();
 }
 
 uint32_t Leds = 0x00000008;
 
 void MartefTick() {
-//    GPIOB->BSRRL = 0x0200;      // Set FAULT output
-//    GPIOD->BSRRH = 0x1000;      // DIGITAL_OUT = 1
+    GPIOF->BSRR = 0x40008000;           // Set TP1, reset TP2
     Timer.Late = (Timer.Period - SysTick->VAL) * Timer.percentFactor;
     if (Timer.XLate < Timer.Late) Timer.XLate = Timer.Late;
     Timer.Tick++;
@@ -45,14 +48,16 @@ void MartefTick() {
 			Leds ^= 0x00080008;
 		}
 	}
+    GPIOF->BSRR = 0x00004000;           // Set TP2
 //    Adc.Tick();
     if (!Timer.initialDelayCounter) {
 //        Servo.Tick();
 //        Dac.Tick();
 //        LedStatus.Tick();
 //        Scope.Tick();
-//        CommunicationTick();
+       CommunicationTick();
     }
     Timer.Use = (Timer.Period - SysTick->VAL) * Timer.percentFactor;
     if (Timer.XUse < Timer.Use) Timer.XUse = Timer.Use;
+    GPIOF->BSRR = 0x80000000;           // Reset TP1
 }

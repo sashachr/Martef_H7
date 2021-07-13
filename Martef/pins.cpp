@@ -75,12 +75,14 @@ struct IoConfStruct IoConf[nIoPins] = {
 };
 */
 
-#define nIoPins   4
+#define nIoPins   6
 struct IoConfStruct IoConf[nIoPins] = {
-  { 3,  8,  2,  7,  0,  2,  0,  0},     // D8 to USART3 TX, push-pull, 50 MHz, no pull-up/down
-  { 3,  9,  2,  7,  0,  2,  0,  0},     // D9 to USART3 RX, push-pull, 50 MHz, no pull-up/down
+  { 3,  8,  2,  7,  0,  2,  0,  0},     // D8 - USART3 TX, push-pull, 50 MHz, no pull-up/down
+  { 3,  9,  2,  7,  0,  2,  0,  0},     // D9 - USART3 RX, push-pull, 50 MHz, no pull-up/down
   { 2,  2,  1,  0,  1,  0,  0,  1},     // C2 - Red LED
   { 2,  3,  1,  0,  1,  0,  0,  1},     // C2 - Green LED
+  { 5, 15,  1,  0,  0,  0,  0,  1},     // F6 - test output 1
+  { 5, 14,  1,  0,  0,  0,  0,  1},     // F7 - test output 2
 };
 
 void PinSet(struct IoConfStruct IoC) {

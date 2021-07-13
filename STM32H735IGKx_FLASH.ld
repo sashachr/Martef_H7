@@ -177,7 +177,28 @@ SECTIONS
     . = ALIGN(8);
   } >DTCMRAM
 
-  
+  _siramD1init = LOADADDR(.ramD1init);
+
+  .ramD1init : /* Space before ':' is critical */
+  {
+    _sramD1init = .;
+    *(.ramD1init)
+    _eramD1init = .;
+  } >RAM_D1 AT> FLASH
+
+  .ramD1 (NOLOAD) : /* Space before ':' is critical */
+  {
+    _sramD1 = .;
+    *(.ramD1)
+    _eramD1 = .;
+  } >RAM_D1
+
+  .ramD2 (NOLOAD) : /* Space before ':' is critical */
+  {
+    _sramD2 = .;
+    *(.ramD2)
+    _eramD2 = .;
+  } >RAM_D2
 
   /* Remove information from the standard libraries */
   /DISCARD/ :

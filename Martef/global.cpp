@@ -18,8 +18,8 @@ uint16_t Initialization;
 byte Program[MaxProgram];
 //#pragma DATA_SECTION(".ebss");
 
-const uint8_t ProductString[] = "AB-07";
-const uint8_t ManufacturerString[] = "Nanomotion";
+__attribute__((section(".ramD1init"))) uint8_t ProductString[] = "Martef-H7";
+__attribute__((section(".ramD1init"))) uint8_t ManufacturerString[] = "XACT Robotics";
 uint8_t ApplicationString[60] = "";
 // uint8_t const* MotorString = "Unknown";
 

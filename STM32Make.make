@@ -49,6 +49,9 @@ main/system_stm32h7xx.c
 
 
 CPP_SOURCES = \
+Martef/command.cpp \
+Martef/communication.cpp \
+Martef/gitversion.cpp \
 Martef/global.cpp \
 Martef/martef.cpp \
 Martef/pins.cpp \

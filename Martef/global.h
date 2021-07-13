@@ -104,8 +104,8 @@ extern byte Program[MaxProgram];
 #define MRE_WRONGINDEX          501
 #define MRE_WRONGVALUE          502
 
-extern const uint8_t ProductString[];
-extern const uint8_t ManufacturerString[];
+extern uint8_t ProductString[];
+extern uint8_t ManufacturerString[];
 extern const uint8_t GitVersion[];
 extern const uint8_t GitSha[];
 extern uint8_t ApplicationString[];
