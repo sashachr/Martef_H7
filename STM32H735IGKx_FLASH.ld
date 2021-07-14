@@ -181,22 +181,37 @@ SECTIONS
 
   .ramD1init : /* Space before ':' is critical */
   {
+    . = ALIGN(4);
     _sramD1init = .;
     *(.ramD1init)
+    . = ALIGN(4);
     _eramD1init = .;
   } >RAM_D1 AT> FLASH
 
   .ramD1 (NOLOAD) : /* Space before ':' is critical */
   {
+    . = ALIGN(4);
     _sramD1 = .;
     *(.ramD1)
+    . = ALIGN(4);
     _eramD1 = .;
+  } >RAM_D1
+
+  .mdmalink (NOLOAD) : /* Space before ':' is critical */
+  {
+    . = ALIGN(8);
+    _smdmalink = .;
+    *(.ramD1)
+    . = ALIGN(8);
+    _emdmalink = .;
   } >RAM_D1
 
   .ramD2 (NOLOAD) : /* Space before ':' is critical */
   {
+    . = ALIGN(4);
     _sramD2 = .;
     *(.ramD2)
+    . = ALIGN(4);
     _eramD2 = .;
   } >RAM_D2
 

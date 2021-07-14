@@ -5,7 +5,7 @@
 //#include "Io.h"
 #include "Communication.h"
 
-__attribute__((section(".ramD1"))) struct MdmaLink MdmaLinkBuf[50];
+__attribute__((section(".mdmalink"))) struct MdmaLink MdmaLinkBuf[50];
 
 __attribute__((section(".ramD2"))) uint8_t uartwritebuf[1024];
 __attribute__((section(".ramD2"))) uint8_t uartreadbuf[1024];

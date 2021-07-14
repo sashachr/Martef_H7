@@ -10,6 +10,7 @@ struct MdmaLink {
     uint32_t  CTBR;      // Trigger and Bus selection Register,    Address offset: 0x68
     uint32_t  CMAR;      // Mask address register,                 Address offset: 0x70
     uint32_t  CMDR;      // Mask Data register,                    Address offset: 0x74
+    uint32_t  fill;
 };
 
 // Channels

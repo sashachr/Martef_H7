@@ -229,17 +229,17 @@ void FdProtocol(uint8_t* buf, uint16_t count, SendStruct* rep) {
 				if (i != 0) (mb-1)->CLAR = (uint32_t)mb;
 				int ii = ind + i, len = (ii < nstrings) ? strlens[ii] : 0;
 				mb->CTCR = 0x7000000A | (len << 18);	// Software request, TRGM Full Transfer, byte sizes, no burst, source/target increment 
-				mb->CBNDTR = len;				
+				mb->CBNDTR = 0x00100000 | (len + 1);				
 				mb->CSAR = (uint32_t)((len == 0) ? emptystring : strs[ii]);
 				mb->CDAR = (uint32_t)(d + total);
 				mb->CBRUR = 0;
 				mb->CLAR = 0;
-				mb->CTBR = 0x00030000;	// Source TCM bus, target AHB bus
+				mb->CTBR = (mb->CSAR < 0x20020000) ? 0x00010000 : 0x00000000;	// Source AXI/TCM bus, target AXI bus
 				mb->CMAR = 0;
 				mb->CMDR = 0;
 				total += len + 1;
 			} 
-			MDMA_Channel0->CCR = 0x00000004;	// Priority medium, interrupts disabled
+			MDMA_Channel0->CCR = 0x00000040;	// Priority medium, interrupts disabled
 			mb = MdmaLinkBuf;
 			MDMA_Channel0->CTCR = mb->CTCR;
 			MDMA_Channel0->CBNDTR = mb->CBNDTR;
