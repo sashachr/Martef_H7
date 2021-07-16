@@ -57,6 +57,8 @@ CommChannelDma::CommChannelDma(uint8_t index, uint8_t dma, uint8_t rxstream, uin
 	RCC->AHB1ENR |= 1 << (dma - 1);	                // Enable DMA1/2 clock
     RxStream = (DMA_Stream_TypeDef*)((uint8_t*)DmaRegs + 0x0010 + 0x0018 * rxstream);
     TxStream = (DMA_Stream_TypeDef*)((uint8_t*)DmaRegs + 0x0010 + 0x0018 * txstream);
+    RxMdma = (MDMA_Channel_TypeDef*)((uint8_t*)MDMA + 0x0040 + 0x0040 * ((dma-1) * 8 + rxstream));
+    TxMdma = (MDMA_Channel_TypeDef*)((uint8_t*)MDMA + 0x0040 + 0x0040 * ((dma-1) * 8 + txstream));
     FindFlags(dma, rxstream, &RxStatus, &RxReadyMask, &RxClearMask);
     FindFlags(dma, txstream, &TxStatus, &TxReadyMask, &TxClearMask);
     RxStream->CR = 0x00030400;  // highest priority, byte size, memory increment, peripheral to memory

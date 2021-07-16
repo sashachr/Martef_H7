@@ -38,20 +38,12 @@ enum MRC_COMMAND {
 uint8_t FdReply[FdReplyMax] = {0xFD};
 
 #define nstrings 10
-static const uint8_t* strs[nstrings] = {
-	ProductString,
-	ManufacturerString,
-	0, // FlashGetSerial(),
-	GitVersion,
-	ApplicationString,
-	0, // MotorString,
-	0, // CDF,
-};
-static uint16_t strlens[nstrings];
+__attribute__((section(".mdmalink"))) static struct MdmaLink mlStrings[nstrings];
+__attribute__((section(".ramD1init"))) static uint8_t emptystring[] = "";
+__attribute__((section(".mdmalink"))) static struct MdmaLink mlReply[4];
 
 #define BREAK(e) {FdReply[1] = e; break;}
 
-static uint8_t emptystring[] = "";
 
 void FdProtocol(uint8_t* buf, uint16_t count, SendStruct* rep) {
 	uint16_t id = *(uint16_t*)&buf[2], clen = *(uint16_t*)&buf[4];
@@ -218,55 +210,58 @@ void FdProtocol(uint8_t* buf, uint16_t count, SendStruct* rep) {
             if (count > 10) count = 10;
 			uint8_t* d = CommChannels[0]->Outbuf;
 			*d = 0xFD; *(d+1) = 0;
+			*(uint16_t*)(d + 2) = id;
 			*(uint16_t*)(d + 6) = 0;
             *(uint16_t*)(d + 8) = ind;
             *(uint16_t*)(d + 10) = count;
-            // rep->Sect[0].Bytes = 12;
-            // rep->nSect = count + 1;
-            uint16_t total = 12;
-			struct MdmaLink* mb = MdmaLinkBuf;
-            for (int i = 0; i < count; i++, mb++) {
-				if (i != 0) (mb-1)->CLAR = (uint32_t)mb;
-				int ii = ind + i, len = (ii < nstrings) ? strlens[ii] : 0;
-				mb->CTCR = 0x7000000A | (len << 18);	// Software request, TRGM Full Transfer, byte sizes, no burst, source/target increment 
-				mb->CBNDTR = 0x00100000 | (len + 1);				
-				mb->CSAR = (uint32_t)((len == 0) ? emptystring : strs[ii]);
-				mb->CDAR = (uint32_t)(d + total);
-				mb->CBRUR = 0;
-				mb->CLAR = 0;
-				mb->CTBR = (mb->CSAR < 0x20020000) ? 0x00010000 : 0x00000000;	// Source AXI/TCM bus, target AXI bus
-				mb->CMAR = 0;
-				mb->CMDR = 0;
-				total += len + 1;
+            int total = 12;
+			struct MdmaLink* ml = (ind < nstrings) ? mlStrings + ind : 0;
+			int i = 0, ii = ind;
+            for ( ; (i < count) && (ii < nstrings); i++, ii++) {
+				ml->CDAR = (uint32_t)(d + total);
+				ml->CLAR = (uint32_t)(ml + 1);
+				total += ml->CBNDTR & 0x0001FFFF;
+				ml++;
+				// if (i != 0) (ml-1)->CLAR = (uint32_t)ml;
+				// int ii = ind + i, len = (ii < nstrings) ? strlens[ii] : 0;
+				// ml->CTCR = 0x7000000A | (len << 18);	// Software request, TRGM Full Transfer, byte sizes, no burst, source/target increment 
+				// ml->CBNDTR = 0x00100000 | (len + 1);				
+				// ml->CSAR = (uint32_t)((len == 0) ? emptystring : strs[ii]);
+				// ml->CDAR = (uint32_t)(d + total);
+				// ml->CBRUR = 0;
+				// ml->CLAR = 0;
+				// ml->CTBR = (ml->CSAR < 0x20020000) ? 0x00010000 : 0x00000000;	// Source AXI/TCM bus, target AXI bus
+				// ml->CMAR = 0;
+				// ml->CMDR = 0;
+				// total += len + 1;
 			} 
-			MDMA_Channel0->CCR = 0x00000040;	// Priority medium, interrupts disabled
-			mb = MdmaLinkBuf;
-			MDMA_Channel0->CTCR = mb->CTCR;
-			MDMA_Channel0->CBNDTR = mb->CBNDTR;
-			MDMA_Channel0->CSAR = mb->CSAR;
-			MDMA_Channel0->CDAR = mb->CDAR;
-			MDMA_Channel0->CBRUR = mb->CBRUR; 
-			MDMA_Channel0->CLAR = mb->CLAR;
-			MDMA_Channel0->CTBR = mb->CTBR;
-			MDMA_Channel0->CMAR = mb->CMAR;
-			MDMA_Channel0->CMDR = mb->CMDR;
-			MDMA_Channel0->CCR |= 0x00000001;	// Enable
-			MDMA_Channel0->CCR |= 0x00010000;	// Start
-            //     switch (ind + i) {
-            //         case 0: p = ProductString; break;
-            //         case 1: p = ManufacturerString; break;
-            //         // case 2: p = FlashGetSerial(); break;
-            //         case 3: p = GitVersion; break;
-            //         case 4: p = ApplicationString; break;
-            //         // case 5: p = MotorString; break;
-            //         //case 6: p = CDF; break;
-            //         default: p = emptystring;
-            //     }
-            //     int n = strlen((char*)p) + 1;
-            //     rep->Sect[i+1].Buf = p;
-            //     rep->Sect[i+1].Bytes = n;
-            //     total += n;
-            // }
+			int fill = count - i + (4 - (total & 3) & 3);  // overindexing and alignment
+			if (fill) {
+				if (ml != 0) (ml-1)->CLAR = (uint32_t)(mlReply);
+				Mdma::InitLink(mlReply[0], 0x70000008, fill, (uint32_t)emptystring, (uint32_t)(d + total));
+				total += fill; 
+			} else {
+				(ml-1)->CLAR = 0;
+			}
+			MDMA_Channel_TypeDef* mc = ((CommChannelDma*)CommChannels[0])->TxMdma;
+			Mdma::InitHard(mc, 0x00000040, (ind < nstrings) ? mlStrings[ind] : mlReply[0]);
+			mc->CCR |= 0x00000001;	// Enable
+			mc->CCR |= 0x00010000;	// Start
+
+
+			// MDMA_Channel0->CCR = 0x00000040;	// Priority medium, interrupts disabled
+			// mb = MdmaLinkBuf;
+			// MDMA_Channel0->CTCR = mb->CTCR;
+			// MDMA_Channel0->CBNDTR = mb->CBNDTR;
+			// MDMA_Channel0->CSAR = mb->CSAR;
+			// MDMA_Channel0->CDAR = mb->CDAR;
+			// MDMA_Channel0->CBRUR = mb->CBRUR; 
+			// MDMA_Channel0->CLAR = mb->CLAR;
+			// MDMA_Channel0->CTBR = mb->CTBR;
+			// MDMA_Channel0->CMAR = mb->CMAR;
+			// MDMA_Channel0->CMDR = mb->CMDR;
+			// MDMA_Channel0->CCR |= 0x00000001;	// Enable
+			// MDMA_Channel0->CCR |= 0x00010000;	// Start
             *(uint16_t*)(d + 4) = total;
             break;
         }
@@ -345,7 +340,8 @@ void FdProtocol(uint8_t* buf, uint16_t count, SendStruct* rep) {
 //	for (int i = 1; i < sect; i++) len += rep->Sect[i].Bytes;
 //	*(uint16_t*)&FdReply[4] = len;
 //	rep->nSect = sect; 
-	rep->cSect = -1;
+	//rep->cSect = -1;
+	CommChannels[0]->StartWrite(CommChannels[0]->Outbuf, *(uint16_t*)(CommChannels[0]->Outbuf + 4));
 }
 
 void ExecuteCommand(uint8_t ConAddr, uint8_t* ComBuf, int received, SendStruct* rep)
@@ -358,6 +354,18 @@ void ExecuteCommand(uint8_t ConAddr, uint8_t* ComBuf, int received, SendStruct* 
 }
 
 void CommandInit() {
-    SCB_InvalidateDCache();
-	for (int i = 0; i < nstrings; i++) strlens[i] = ((strs[i] == 0) || (strs[i][0] == 0) || (strs[i][0] == 0xFF)) ? 0 : strlen((char*)strs[i]);
+	const uint8_t* strs[nstrings] = {
+		ProductString,
+		ManufacturerString,
+		0, // FlashGetSerial(),
+		GitVersion,
+		ApplicationString,
+		0, // MotorString,
+		0, // CDF,
+	};
+	uint32_t CTCR = 0x7000000A;		// Software request, TRGM Full Transfer, byte sizes, no burst, source/target increment 
+	for (int i = 0; i < nstrings; i++) {
+		int len = (strs[i] == 0) ? 0 : strlen((char*)strs[i]);
+		Mdma::InitLink(mlStrings[i], CTCR | (len << 18), len + 1, (uint32_t)((len == 0) ? emptystring : strs[i]));
+	} 
  }
