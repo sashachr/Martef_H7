@@ -21,22 +21,24 @@ class Mdma {
         c->CCR = CCR; c->CTCR = CTCR; c->CBNDTR = CBNDTR; c->CSAR = CSAR; c->CDAR = CDAR; c->CBRUR = CBRUR; c->CLAR = CLAR; c->CTBR = CTBR; c->CMAR = CMAR; c->CMDR = CMDR;  
     }
     public: static void InitHard(MDMA_Channel_TypeDef* c, uint32_t CCR, MdmaLink& ml) {
+        c->CCR &= ~1;       // Disable channel
+        while (c->CCR & 1) ;
+        c->CIFCR = 0x0000001F;  // Clear flags
         c->CCR = CCR; c->CTCR = ml.CTCR; c->CBNDTR = ml.CBNDTR; c->CSAR = ml.CSAR; c->CDAR = ml.CDAR; c->CBRUR = ml.CBRUR; c->CLAR = ml.CLAR; c->CTBR = ml.CTBR; c->CMAR = ml.CMAR; c->CMDR = ml.CMDR;  
     }
 };
 
-// Channels
-#define CH_COMM     0
-
 class CommChannel {
     public: uint8_t *Inbuf, *Outbuf; 
+    public: uint16_t InbufSize, OutbufSize; 
 	protected: uint8_t Channel;
+    public: MDMA_Channel_TypeDef* RxMdma;
+    public: MDMA_Channel_TypeDef* TxMdma;
 	protected: CommChannel(uint8_t index) : Channel(index) {}
     public: virtual void Tick() = 0;
-    public: virtual int StartRead(void* buf, int len) {return 0;}
-    public: virtual int StartWrite(void* buf, int len) {return 0;}
+    public: virtual int StartRead() {return 0;}
+    public: virtual int StartWrite() {return 0;}
 };
-extern struct MdmaLink MdmaLinkBuf[50];
 
 class CommChannelDma : public CommChannel {
     DMA_TypeDef* DmaRegs;
@@ -46,8 +48,6 @@ class CommChannelDma : public CommChannel {
     uint32_t TxClearMask, TxReadyMask;
     uint32_t volatile* RxStatus;
     uint32_t RxClearMask, RxReadyMask;
-    public: MDMA_Channel_TypeDef* RxMdma;
-    public: MDMA_Channel_TypeDef* TxMdma;
 
 	protected: CommChannelDma(uint8_t index, uint8_t dma, uint8_t rxstream, uint8_t rxchannel, uint8_t txstream, uint8_t txchannel);
     protected: void DmaInit(int dma, int rxstream, int rxchannel, int txstream, int txchannel) {}

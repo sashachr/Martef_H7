@@ -122,9 +122,6 @@ struct GUID {
   uint8_t  Data4[8];
 };
 
-extern const struct GUID GuidProduct;
-extern const struct GUID GuidManufacturer;
-extern const struct GUID GuidFwVersion;
 extern const struct GUID GuidDummy;
 extern uint32_t Properties[];
 #define FLASH_PAGE (*(uint16_t*)Properties)

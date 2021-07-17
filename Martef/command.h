@@ -4,19 +4,6 @@
 
 #pragma once
 
-//extern int32_t ConAddr;
-
-struct SectionStruct {
-	const uint8_t* Buf;
-	uint16_t Bytes;
-};
-
-struct SendStruct {
-	struct SectionStruct Sect[10];
-	int16_t nSect, cSect;
-    uint16_t* Flag;      // To zero after the end of transmit
-};
-
 enum MRE_ERRORS {
 	MRE_ILLEGALCOMMAND = 101,
 	MRE_FORMAT = 102,
@@ -39,5 +26,5 @@ enum MRE_ERRORS {
 
 void CommandInit();
 
-
-void ExecuteCommand(uint8_t ConAddr, uint8_t* ComBuf, int ComCount, SendStruct* rep);
+class CommChannel;
+void ExecuteCommand(uint8_t* com, int comcount, CommChannel* ch);

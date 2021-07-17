@@ -5,21 +5,17 @@
 //#include "Io.h"
 #include "Communication.h"
 
-__attribute__((section(".mdmalink"))) struct MdmaLink MdmaLinkBuf[50];
-
-__attribute__((section(".ramD2"))) uint8_t uartwritebuf[1024];
-__attribute__((section(".ramD2"))) uint8_t uartreadbuf[1024];
+__attribute__((section(".ramD2"), aligned(32))) uint8_t uartwritebuf[1024], uartreadbuf[1024];
 
 class CommUart : public CommChannelDma {
     USART_TypeDef* hard;
-    SendStruct send;
     uint16_t received, readlen, intertime, intercount;
     public: CommUart(uint8_t index, uint8_t periphindex, uint8_t bus, uint8_t dma, uint8_t rxstream, uint8_t rxchannel, uint8_t txstream, uint8_t txchannel, uint32_t rate, uint16_t intertimeout);
     public: virtual void Tick();
     private: void TickRead();
     private: void TickWrite();
-    public: virtual int StartRead(void* buf, int len);
-    public: virtual int StartWrite(void* buf, int len);
+    public: virtual int StartRead();
+    public: virtual int StartWrite();
 };
 
 class CommI2c : public CommChannel {
@@ -33,8 +29,8 @@ class CommI2c : public CommChannel {
     public: virtual void Tick();
     private: void TickRead();
     private: void TickWrite();
-    public: virtual int StartRead(void* buf, int len);
-    public: virtual int StartWrite(void* buf, int len);
+    public: virtual int StartRead();
+    public: virtual int StartWrite();
 };
 
 // For AB-07
@@ -103,7 +99,8 @@ USART_TypeDef* const Uarts[] = { 0, USART1, USART2, USART3, UART4, UART5, USART6
 CommUart::CommUart(uint8_t index, uint8_t periphindex, uint8_t bus, uint8_t dma, uint8_t rxstream, uint8_t rxchannel, uint8_t txstream, uint8_t txchannel, uint32_t rate, uint16_t intertimeout)
 	: CommChannelDma(index, dma, rxstream, rxchannel, txstream, txchannel)
 {
-    Inbuf = uartreadbuf; Outbuf = uartwritebuf;
+    Inbuf = uartreadbuf; InbufSize = 1024;
+    Outbuf = uartwritebuf; OutbufSize = 1024;
     intertime = intertimeout;
     hard = Uarts[periphindex];
     if (bus == 1) {
@@ -118,46 +115,36 @@ CommUart::CommUart(uint8_t index, uint8_t periphindex, uint8_t bus, uint8_t dma,
     uint32_t integerdivider = (((uint64_t)((bus==1) ? APB1_RATE : APB2_RATE) << 1) / rate + 1) >> 1;    
     hard->BRR = integerdivider;
     hard->CR1 |= 0x00000001;    // Enable
-    send.nSect = 0;
-    StartRead(Inbuf, 128);
+    StartRead();
 }
 
 void CommUart::TickRead() {
-    int n = 128 - ReadCount();
+    int n = InbufSize - ReadCount();
     if (n == 0) return;
     if (received == 0) {
         SCB_InvalidateDCache();
-        if (Inbuf[0] != 0xFD) {StartRead(Inbuf, 128); return;}      // Garbage
+        if (Inbuf[0] != 0xFD) {StartRead(); return;}      // Garbage
     }
     if (n != received) {
         received = n;
         intercount = 0;
     } else {
         if (++intercount > intertime) {
-            StartRead(Inbuf, 128); return;  // Internal timeout
+            StartRead(); return;  // Internal timeout
         }    
     }
     if (n < 6) return;
     if (readlen == 0) {
-        SCB_InvalidateDCache();
+        SCB_InvalidateDCache_by_Addr(Inbuf, 32);
         readlen = *(uint16_t*)&Inbuf[4];
-        if ((readlen > 128) || (readlen < 8)) {StartRead(Inbuf, 128); return;}      // Garbage
+        if ((readlen > 128) || (readlen < 8)) {StartRead(); return;}      // Garbage
     }
-    if ((n < readlen) || (send.nSect > 0)) return;
-   	ExecuteCommand(0, Inbuf, n, &send);
-    StartRead(Inbuf, 128);
+    if ((n < readlen) || (WriteCount() > 0)) return;
+   	ExecuteCommand((uint8_t*)Inbuf, n, this);
+    StartRead();
 }
 
 void CommUart::TickWrite() {
-    if (send.nSect == 0) return;
-    if ((send.cSect < 0) || (WriteCount() == 0)) {
-        if (++send.cSect == send.nSect) {
-            send.nSect = 0;     // Transmission end
-            if (send.Flag != 0) *send.Flag = 0;
-        } else {
-            StartWrite((void*)send.Sect[send.cSect].Buf, send.Sect[send.cSect].Bytes);
-        }
-    }
 }
 
 void CommUart::Tick() {
@@ -165,23 +152,20 @@ void CommUart::Tick() {
     TickWrite();
 }
 
-int CommUart::StartRead(void* buf, int len) {
+int CommUart::StartRead() {
     hard->CR3 &= (uint16_t)~0x0040; 	// Disable USART Rx DMA request
     uint32_t dummy = hard->ISR;          // Read SR to clear errors
     dummy = hard->RDR;                   // Read DR to clear errors     
-    StartReadDma((void*)&hard->RDR, buf, len);      // Start DMA
+    StartReadDma((void*)&hard->RDR, Inbuf, InbufSize);      // Start DMA
     received = readlen = 0;
     hard->CR3 |= (uint16_t)0x0040;		// Enable USART Rx DMA request
 	return 0;
 }
 
-int CommUart::StartWrite(void* buf, int len) {
-    // hard->CR3 &= (uint16_t)~0x0080;		// Disable USART Tx DMA request
-    // hard->ISR = (uint16_t)~0x0040;		// Clear TC bit in the SR register by writing 0 to it
-    // hard->TDR = 0x55;
-	// return 0;
+int CommUart::StartWrite() {
+    SCB_CleanDCache_by_Addr((uint32_t*)Outbuf, 32);
     hard->CR3 &= (uint16_t)~0x0080;		// Disable USART Tx DMA request
-    StartWriteDma((void*)&hard->TDR, buf, len);
+    StartWriteDma((void*)&hard->TDR, Outbuf, *(uint16_t*)(Outbuf + 4));
     hard->CR3 |= (uint16_t)0x0080;		// Enable USART Tx DMA requests
     hard->ISR = (uint16_t)~0x0040;		// Clear TC bit in the SR register by writing 0 to it
 	return 0;

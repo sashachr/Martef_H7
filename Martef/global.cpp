@@ -18,19 +18,11 @@ uint16_t Initialization;
 byte Program[MaxProgram];
 //#pragma DATA_SECTION(".ebss");
 
-__attribute__((section(".ramD1init"))) uint8_t ProductString[] = "Martef-H7";
-__attribute__((section(".ramD1init"))) uint8_t ManufacturerString[] = "XACT Robotics";
-uint8_t ApplicationString[60] = "";
-// uint8_t const* MotorString = "Unknown";
 
 uint8_t Motor;      // 1=HR1, 2=HR2, and so on
 
-GUID GuidUnit = { 0, 0, 0, { 0, 0, 0, 0, 0, 0, 0, 0 } };
 
 #pragma location=0x08020200 
-const GUID __attribute__((used)) GuidProduct = { 0xc7d043ae, 0x7161, 0x4b5b, { 0xb3, 0xc0, 0x72, 0x1, 0xc8, 0x6d, 0x9c, 0x1 } }; // {C7D043AE-7161-4B5B-B3C0-7201C86D9C01}
-const GUID GuidManufacturer = { 0xebb27f3b, 0x758f, 0x4dbe, { 0x94, 0x93, 0x4, 0x9f, 0xec, 0x2e, 0x8f, 0x22 } };  // {EBB27F3B-758F-4DBE-9493-049FEC2E8F22}
-const GUID GuidFwVersion = { 0x113cc7c1, 0xa2d3, 0x46e1, { 0xad, 0x18, 0x27, 0xa2, 0x84, 0xf9, 0x86, 0xaa } };  // {113CC7C1-A2D3-46E1-AD18-27A284F986AA}
 const GUID GuidDummy = { 0, 0, 0, { 0, 0, 0, 0, 0, 0, 0, 0 } };
 
 uint32_t Properties[4] = {0, 0, 0, 0};
