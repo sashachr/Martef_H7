@@ -37,7 +37,7 @@
 // 	}
 // 	return count;
 // }
-static int32_t RwBit(uint16_t ind, int16_t count, uint32_t* buf, uint32_t* var, uint32_t bit) {
+static int32_t RwBit(uint16_t ind, uint16_t count, uint32_t* buf, uint32_t* var, uint32_t bit) {
 	uint32_t* v = var + ind;
   	if (count == 1) { 	// Read
 	  	*buf = (*v & bit) != 0;
@@ -75,7 +75,7 @@ int CopyString(uint8_t* dest, const uint8_t* source, int max) {
 // int GetUnitString(uint8_t* buf, int count) {
 //     return GetGuidString((GUID*)FlashGetUnitGuid(), buf, count);      
 // }
-int32_t GetStatus(uint16_t ind, int16_t count, uint32_t* buf) {
+int32_t GetStatus(uint16_t ind, uint16_t count, uint32_t* buf) {
     for (int i=0; i<count; i++) {
         switch (ind+i) {
             case 0: {   // General status
@@ -99,7 +99,7 @@ int32_t GetStatus(uint16_t ind, int16_t count, uint32_t* buf) {
     }
     return count;
 }
-int32_t GetAxisStatus(uint16_t ind, int16_t count, uint32_t* buf) {
+int32_t GetAxisStatus(uint16_t ind, uint16_t count, uint32_t* buf) {
     for (int i=0; i<count; i++) {
         int a = ind + i;
         if (a < N_AXES) {
@@ -187,8 +187,24 @@ int32_t FlashSave(uint16_t ind, int16_t count, uint32_t* buf) {
 
 //int32_t WriteDout(uint16_t ind, int16_t count, uint32_t* buf) {return Servo.WriteDout(*(float*)buf);}
 
+#define StructDirectRead(struc, var, maxind) \
+    [](uint16_t i)->int32_t* {return (int32_t*)&struc[i].var;}, \
+    [](uint16_t ind, uint16_t count, uint32_t* buf) -> int32_t {  \
+        int16_t i = 0, j = ind; \
+        for (; (i < count) && (j < maxind); i++,j++) *buf++ = struc[j].var; \
+        for (; i < count; i++) *buf++ = NONE; \
+        return i; \
+    }
+#define ServoDirectRead(var) StructDirectRead(Servo, var, N_AXES)
 
-
+#define StructDirectReadWrite(struc, var, maxind) \
+    StructDirectRead(struc, var, maxind), \
+    [](uint16_t ind, uint16_t count, uint32_t* buf) -> int32_t {  \
+        int16_t i = 0, j = ind; \
+        for (; (i < count) && (j < maxind); i++,j++) if (!IsNan(*buf)) struc[j].var = *buf++; \
+        return i; \
+    }
+#define ServoDirectReadWrite(var) StructDirectReadWrite(Servo, var, N_AXES)
 
 
 
@@ -308,10 +324,10 @@ Vardef SysVars[nSysVars] = {
     {0},
     {0},
     {0},
-	{1, TYPE_FLOAT|VF_DIRECTREAD|VF_DIRECTWRITE, [](uint16_t i)->int32_t* {return (int32_t*)&Servo[i].RPos;}, 0, 0}, 
-	{1, TYPE_FLOAT|VF_DIRECTREAD|VF_DIRECTWRITE, [](uint16_t i)->int32_t* {return (int32_t*)&Servo[i].RVel;}, 0}, 
-	{1, TYPE_FLOAT|VF_DIRECTREAD|VF_DIRECTWRITE, [](uint16_t i)->int32_t* {return (int32_t*)&Servo[i].RAcc;}, 0}, 
-	{1, TYPE_FLOAT|VF_DIRECTREAD|VF_DIRECTWRITE, [](uint16_t i)->int32_t* {return (int32_t*)&Servo[i].RJerk;}, 0}, 
+	{1, TYPE_FLOAT|VF_DIRECTREAD|VF_DIRECTWRITE, ServoDirectRead(RPos), 0}, 
+	{1, TYPE_FLOAT|VF_DIRECTREAD|VF_DIRECTWRITE, ServoDirectRead(RVel), 0}, 
+	{1, TYPE_FLOAT|VF_DIRECTREAD|VF_DIRECTWRITE, ServoDirectReadWrite(RAcc)}, 
+	{1, TYPE_FLOAT|VF_DIRECTREAD|VF_DIRECTWRITE, ServoDirectReadWrite(RJerk)}, 
     {0},    // {DirectFull(N_AXES, Srv, Control.RCur)},
     {0},    // {DirectFull(N_AXES, Srv, Control.TPos)},
     {0},    // {DirectFull(N_AXES, Srv, Control.TVel)},

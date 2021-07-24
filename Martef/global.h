@@ -156,6 +156,9 @@ inline float GetNan()
 
 union Any32 {float Float; int32_t Int; uint32_t Uint;};
 
+inline float GetNone() { Any32 n; n.Uint = 0xFFFFFFFF; return n.Float; }
+#define NONE GetNone()
+
 uint32_t Adler32(int16_t* Buf, uint16_t Count);
 
 // Calculate Fletcher32 sum of the Buf, Count is Buf length in 16-bit words

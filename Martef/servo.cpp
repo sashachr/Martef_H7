@@ -212,6 +212,7 @@ uint8_t ServoStruct::IdentifyMotor() {
 int32_t ServoStruct::WriteDout(float out) {
     Out = out;
     Mode |= 0x10000061;     // Enable, disable motion/position/velocity
+    return 1;
 }
 
 
