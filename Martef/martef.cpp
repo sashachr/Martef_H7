@@ -5,6 +5,11 @@
 
 #include "global.h"
 #include "thread.h"
+#include "adc.h"
+#include "triggerscope.h"
+#include "encoder.h"
+#include "servo.h"
+#include "io.h"
 #include "pins.h"
 #include "systick.h"
 #include "command.h"
@@ -20,11 +25,16 @@ void MartefInit() {
 	/* Configure SysTick for 50 mksec. */
     Timer.Period = SYSCLK_RATE/(int)TICKS_IN_SECOND;
     Timer.percentFactor = 100.0F/Timer.Period;
-	ThreadsInit();
-	PinsInit();
     CommunicationInit();
     CommandInit();
+    Io.Init();
+    Encoder.Init();
+    for (int i = 0; i < N_AXES; i++) Servo[i].Init();
+    Adc.Init();
+    Scope.Init();
+	ThreadsInit();
 	SysTickInit();
+	PinsInit();
 }
 
 uint32_t Leds = 0x00000008;
@@ -51,11 +61,11 @@ void MartefTick() {
     GPIOF->BSRR = 0x00004000;           // Set TP2
 //    Adc.Tick();
     if (!Timer.initialDelayCounter) {
-//        Servo.Tick();
+        for (int i = 0; i < N_AXES; i++) Servo[i].Tick();
 //        Dac.Tick();
 //        LedStatus.Tick();
-//        Scope.Tick();
-       CommunicationTick();
+        Scope.Tick();
+        CommunicationTick();
     }
     Timer.Use = (Timer.Period - SysTick->VAL) * Timer.percentFactor;
     if (Timer.XUse < Timer.Use) Timer.XUse = Timer.Use;

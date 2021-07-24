@@ -140,7 +140,7 @@ void CommUart::TickRead() {
         if ((readlen > 128) || (readlen < 8)) {StartRead(); return;}      // Garbage
     }
     if ((n < readlen) || (WriteCount() > 0)) return;
-   	ExecuteCommand((uint8_t*)Inbuf, n, this);
+   	CommandExecute((uint8_t*)Inbuf, n, this);
     StartRead();
 }
 
@@ -163,7 +163,6 @@ int CommUart::StartRead() {
 }
 
 int CommUart::StartWrite() {
-    SCB_CleanDCache_by_Addr((uint32_t*)Outbuf, 32);
     hard->CR3 &= (uint16_t)~0x0080;		// Disable USART Tx DMA request
     StartWriteDma((void*)&hard->TDR, Outbuf, *(uint16_t*)(Outbuf + 4));
     hard->CR3 |= (uint16_t)0x0080;		// Enable USART Tx DMA requests

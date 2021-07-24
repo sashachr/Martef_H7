@@ -49,14 +49,21 @@ main/system_stm32h7xx.c
 
 
 CPP_SOURCES = \
+Martef/adc.cpp \
 Martef/command.cpp \
 Martef/communication.cpp \
+Martef/encoder.cpp \
 Martef/gitversion.cpp \
 Martef/global.cpp \
+Martef/io.cpp \
 Martef/martef.cpp \
 Martef/pins.cpp \
+Martef/pwm.cpp \
+Martef/servo.cpp \
 Martef/systick.cpp \
+Martef/sysvars.cpp \
 Martef/thread.cpp \
+Martef/triggerscope.cpp \
 main/main.cpp
 
 

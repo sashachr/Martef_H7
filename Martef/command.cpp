@@ -6,7 +6,7 @@
 #include <string.h>
 
 #include "Global.h"
-//#include "SysVars.h"
+#include "SysVars.h"
 //#include "Martel.h"
 //#include "Cdf.h"
 #include "communication.h"
@@ -64,26 +64,26 @@ void FdProtocol(uint8_t* buf, uint16_t count, CommChannel* ch) {
 		case MRC_READVAR: {
 			// if (clen != 8) BREAK(MRE_FORMAT)
 			// uint16_t var = *(uint16_t*)(buf + 6);
-            // *(uint16_t*)(FdReply + 6) = var;
+            // *(uint16_t*)(out + 6) = var;
             // if (var < 10000) {      // System variable
             //     if ((var >= nSysVars) || (SysVars[var].Size <= 0)) BREAK(MRE_ILLEGALVARIABLE)
-            //     *(uint16_t*)(FdReply + 6) = var;
+            //     *(uint16_t*)(out + 6) = var;
             //     int n = SysVars[var].Size;
             //     if (n > 16) n = 16;
-            //     *(uint16_t*)(FdReply + 4) = rep->Sect[0].Bytes = 8 + (n << 2);
+            //     *(uint16_t*)(out + 4) = rep->Sect[0].Bytes = 8 + (n << 2);
             // } else if (var < 20000) { // User scalar
             //     var -= 10000;
-            //     *(uint16_t*)(FdReply + 4) = rep->Sect[0].Bytes = 12;
+            //     *(uint16_t*)(out + 4) = rep->Sect[0].Bytes = 12;
             // } else if (var < 30000) { // User array
             //     var -= 20000;
             //     int32_t* ar = 0; // (int32_t*)MrtInfo.Arrays[var];
             //     int size = *ar++;
             //     if (size <= 16) {
-            //         for (uint16_t i = 0; i < size; i++) *(uint32_t*)(FdReply + 8 + (i << 2)) = *ar++;
-            //         *(uint16_t*)(FdReply + 4) = rep->Sect[0].Bytes = 8 + (size << 2);
+            //         for (uint16_t i = 0; i < size; i++) *(uint32_t*)(out + 8 + (i << 2)) = *ar++;
+            //         *(uint16_t*)(out + 4) = rep->Sect[0].Bytes = 8 + (size << 2);
             //     } else {
             //         rep->nSect = 2;
-            //         *(uint16_t*)(FdReply + 4) = 8 + (size << 2);
+            //         *(uint16_t*)(out + 4) = 8 + (size << 2);
             //         rep->Sect[0].Bytes = 8;
             //         rep->Sect[1].Buf = (uint8_t*)(ar + 1);
             //         rep->Sect[1].Bytes = size << 2;
@@ -94,9 +94,9 @@ void FdProtocol(uint8_t* buf, uint16_t count, CommChannel* ch) {
 		case MRC_READARRAY: {
 			// if (clen != 12) BREAK(MRE_FORMAT)
 			// uint16_t var = *(uint16_t*)&buf[6], ind = *(uint16_t*)&buf[8], count = *(uint16_t*)&buf[10];
-			// *(uint16_t*)(FdReply + 6) = var;
-            // *(uint16_t*)(FdReply + 8) = ind;
-            // *(uint16_t*)(FdReply + 10) = count;
+			// *(uint16_t*)(out + 6) = var;
+            // *(uint16_t*)(out + 8) = ind;
+            // *(uint16_t*)(out + 10) = count;
             // if (var < 10000) {      // System variable
             //     if (var >= nSysVars) BREAK(MRE_ILLEGALVARIABLE)
 			// 	Vardef* vd = SysVars + var;
@@ -104,13 +104,13 @@ void FdProtocol(uint8_t* buf, uint16_t count, CommChannel* ch) {
 			// 	if (n == 0) BREAK(MRE_ILLEGALVARIABLE)
             //     if (ind + count > n) BREAK(MRE_ILLEGALINDEX)
 			// 	if (vd->Flags & VF_DIRECTREAD) {
-			// 		*(uint16_t*)(FdReply + 4) = 12 + (count << 2);
+			// 		*(uint16_t*)(out + 4) = 12 + (count << 2);
 			// 		if (count <= 16) {
-			// 		  	rep->Sect[0].Bytes = *(uint16_t*)(FdReply + 4);
+			// 		  	rep->Sect[0].Bytes = *(uint16_t*)(out + 4);
             //             if ((vd->Flags & VF_TYPE) >= TYPE_INT32) {
-			// 			    MemCpy32((uint32_t*)(FdReply + 12), vd->Array + ind, count); 
+			// 			    MemCpy32((uint32_t*)(out + 12), vd->Array + ind, count); 
             //             } else {
-            //                 for (int i=0; i<count; i++) *(int32_t*)(FdReply+12+4*i) = GetSysVar(var, ind+i);
+            //                 for (int i=0; i<count; i++) *(int32_t*)(out+12+4*i) = GetSysVar(var, ind+i);
             //             }
 			// 		} else {
 			// 		    rep->nSect = 2;
@@ -119,27 +119,27 @@ void FdProtocol(uint8_t* buf, uint16_t count, CommChannel* ch) {
 			// 			rep->Sect[1].Bytes = count << 2;
 			// 		}
 			// 	} else if (vd->Flags & VF_PROPREAD) {
-            //         int n = SysVars[var].ReadWrite(ind, count, (uint32_t*)(FdReply + 12));
+            //         int n = SysVars[var].ReadWrite(ind, count, (uint32_t*)(out + 12));
             //         if (n > 0) {    // n is number of 32-bit words
-	        //             *(uint16_t*)(FdReply + 4) = rep->Sect[0].Bytes = 12 + (n << 2);
+	        //             *(uint16_t*)(out + 4) = rep->Sect[0].Bytes = 12 + (n << 2);
             //         } else {        // -n is number of sections
             //             rep->nSect = -n + 1;
             //             uint16_t total;
 			// 			total = rep->Sect[0].Bytes = 12;
-            //             rep->Flag = (uint16_t*)*(uint32_t*)(FdReply + 12);
-            //             uint32_t *from = (uint32_t*)(FdReply + 16), *to = (uint32_t*)&rep->Sect[1];
+            //             rep->Flag = (uint16_t*)*(uint32_t*)(out + 12);
+            //             uint32_t *from = (uint32_t*)(out + 16), *to = (uint32_t*)&rep->Sect[1];
             //             for (int i = 0; i < -n; i++) {
             //                 *to++ = *from++;
             //                 total += (uint16_t)*from;
             //                 *to++ = *from++;
             //             }
-            //             *(uint16_t*)(FdReply + 4) = total;
+            //             *(uint16_t*)(out + 4) = total;
             //         }
 			// 	} else BREAK(MRE_ILLEGALVARIABLE)
 			// } else if (var < 20000) {   // User scalar
             //     if (ind + count > 1) BREAK(MRE_ILLEGALINDEX)
-            //     *(int32_t*)&FdReply[12] = MrtInfo.Globals[var-10000];
-            //     *(uint16_t*)(FdReply + 4) = 16;
+            //     *(int32_t*)&out[12] = MrtInfo.Globals[var-10000];
+            //     *(uint16_t*)(out + 4) = 16;
 			// } else if (var < 30000) {   // User array
             //     int32_t *a = (int32_t*)MrtInfo.Arrays[var-20000], n = *a;
             //     if (ind + count > n) BREAK(MRE_ILLEGALINDEX)
@@ -189,7 +189,7 @@ void FdProtocol(uint8_t* buf, uint16_t count, CommChannel* ch) {
 			// uint16_t count = *ip++;
 			// if (count > 64) BREAK(MRE_FORMAT)
 			// if (clen != 8 + 4 * count) BREAK(MRE_FORMAT)
-			// int32_t* op = (int32_t*)&FdReply[8];
+			// int32_t* op = (int32_t*)&out[8];
 			// for (int i = 0; i < count; i++) {
 			// 	uint16_t var = *ip++, ind = *ip++;
             //     if (var < 10000) {      // System variable
@@ -205,8 +205,8 @@ void FdProtocol(uint8_t* buf, uint16_t count, CommChannel* ch) {
             //         *op++ = -1;                
             //     }
 			// }	
-			// *(uint16_t*)&FdReply[6] = count;
-			// *(uint16_t*)&FdReply[4] = rep->Sect[0].Bytes = clen;
+			// *(uint16_t*)&out[6] = count;
+			// *(uint16_t*)&out[4] = rep->Sect[0].Bytes = clen;
 			break;
 		}
 		case MRC_READSTRING: {
@@ -243,7 +243,7 @@ void FdProtocol(uint8_t* buf, uint16_t count, CommChannel* ch) {
 			// uint16_t ind = *(uint16_t*)&buf[8], count = *(uint16_t*)&buf[10];
 			// if ((ind != 2) || (count != 1)) BREAK(MRE_ILLEGALINDEX)
             // if (FlashIsLocked()) BREAK(MRE_FLASHLOCKED)
-			// *(uint16_t*)&FdReply[6] = 0; *(uint16_t*)&FdReply[8] = 2; *(uint16_t*)&FdReply[10] = 1;
+			// *(uint16_t*)&out[6] = 0; *(uint16_t*)&out[8] = 2; *(uint16_t*)&out[10] = 1;
             // uint16_t r = FlashSaveSerial(&buf[12]);
             // if (r != 0) BREAK(MRE_FLASHWRITEFAILED)
 			// rep->Sect[0].Bytes = 12;
@@ -269,11 +269,12 @@ void FdProtocol(uint8_t* buf, uint16_t count, CommChannel* ch) {
 			} else {
 				(ml-1)->CLAR = 0;
 			}
+            *(uint16_t*)(out + 4) = total;
+		    SCB_CleanDCache_by_Addr((uint32_t*)out, 32);
 			MDMA_Channel_TypeDef* mc = ch->TxMdma;
 			Mdma::InitHard(mc, 0x00000040, (ind < nguids) ? mlGuids[ind] : mlReply[0]);
 			mc->CCR |= 0x00000001;	// Enable
 			mc->CCR |= 0x00010000;	// Start
-            *(uint16_t*)(out + 4) = total;
             break;
 		}
 		case MRC_UPGRADE: {
@@ -310,7 +311,7 @@ void FdProtocol(uint8_t* buf, uint16_t count, CommChannel* ch) {
 		case MRC_FUNCTION: {
 			// if (clen < 12) BREAK(MRE_FORMAT)
 			// uint16_t var = *(uint16_t*)&buf[6], ind = *(uint16_t*)&buf[8], func = *(uint16_t*)&buf[10];
-			// FdReply[1] = StartThreadFunction(var, ind, func, (int32_t*)&buf[12], (clen - 12) >> 2);
+			// out[1] = StartThreadFunction(var, ind, func, (int32_t*)&buf[12], (clen - 12) >> 2);
 			break;
 		}
 		default: {
@@ -319,13 +320,13 @@ void FdProtocol(uint8_t* buf, uint16_t count, CommChannel* ch) {
 	}
 //	uint16_t len = rep->Sect[0].Bytes;
 //	for (int i = 1; i < sect; i++) len += rep->Sect[i].Bytes;
-//	*(uint16_t*)&FdReply[4] = len;
+//	*(uint16_t*)&out[4] = len;
 //	rep->nSect = sect; 
 	//rep->cSect = -1;
 	ch->StartWrite();
 }
 
-void ExecuteCommand(uint8_t* com, int comcount, CommChannel* ch)
+void CommandExecute(uint8_t* com, int comcount, CommChannel* ch)
 {
 	if (com[0] == 0xFD) {
 		FdProtocol(com, comcount, ch);

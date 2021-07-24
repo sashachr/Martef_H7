@@ -54,7 +54,14 @@ Martef/systick.cpp \
 Martef/thread.cpp \
 Martef/gitversion.cpp \
 Martef/communication.cpp \
-Martef/command.cpp
+Martef/command.cpp \
+Martef/sysvars.cpp \
+Martef/servo.cpp \
+Martef/pwm.cpp \
+Martef/io.cpp \
+Martef/encoder.cpp \
+Martef/triggerscope.cpp \
+Martef/adc.cpp
 #Drivers/STM32H7xx_HAL_Driver/Src/stm32h7xx_hal_flash.c \
 #Drivers/STM32H7xx_HAL_Driver/Src/stm32h7xx_hal_flash_ex.c \
 #Drivers/STM32H7xx_HAL_Driver/Src/stm32h7xx_hal_rcc_ex.c \

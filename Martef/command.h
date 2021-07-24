@@ -27,4 +27,4 @@ enum MRE_ERRORS {
 void CommandInit();
 
 class CommChannel;
-void ExecuteCommand(uint8_t* com, int comcount, CommChannel* ch);
+void CommandExecute(uint8_t* com, int comcount, CommChannel* ch);

@@ -4,11 +4,9 @@
 
 #pragma once
 
-#define SAM_V71_XPLAINED
-
 typedef uint8_t  byte;
 
-#define N_AXES        2               // Number of axes
+#define N_AXES        6               // Number of axes
 #define N_ENCODERS    2               // Number of Encoders
 #define N_PWMS		  2				  // Number of PWMs
 #define N_CHANNELS    3               // Number of communication channels
