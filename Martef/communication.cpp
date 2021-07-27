@@ -122,7 +122,7 @@ void CommUart::TickRead() {
     int n = InbufSize - ReadCount();
     if (n == 0) return;
     if (received == 0) {
-        SCB_InvalidateDCache();
+        SCB_InvalidateDCache_by_Addr(Inbuf, 1);
         if (Inbuf[0] != 0xFD) {StartRead(); return;}      // Garbage
     }
     if (n != received) {
@@ -135,12 +135,13 @@ void CommUart::TickRead() {
     }
     if (n < 6) return;
     if (readlen == 0) {
-        SCB_InvalidateDCache_by_Addr(Inbuf, 32);
+        SCB_InvalidateDCache_by_Addr(Inbuf, 6);
         readlen = *(uint16_t*)&Inbuf[4];
         if ((readlen > 128) || (readlen < 8)) {StartRead(); return;}      // Garbage
     }
     if ((n < readlen) || (WriteCount() > 0)) return;
-   	CommandExecute((uint8_t*)Inbuf, n, this);
+    SCB_InvalidateDCache_by_Addr(Inbuf, readlen);
+   	CommandExecute((uint8_t*)Inbuf, readlen, this);
     StartRead();
 }
 

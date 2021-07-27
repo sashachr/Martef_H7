@@ -184,7 +184,7 @@ void ScopeStruct::Init() {
     SendBuf = -1;
 }
 
-uint8_t ScopeStruct::Configure(uint32_t* from, uint16_t count) {
+uint8_t ScopeStruct::Configure(int32_t* from, uint16_t count) {
     MemCpy32((uint8_t*)&ScopeConfig, from, count);
     uint8_t com = ScopeConfig.Command;
     if ((com == SCC_CONFIG) || (com == SCC_CONFIGSTART)) Init();
@@ -196,10 +196,10 @@ uint8_t ScopeStruct::Configure(uint32_t* from, uint16_t count) {
 	return count;
 }
 
-uint8_t ScopeStruct::Read(uint32_t* buf) {
+uint8_t ScopeStruct::Read(int32_t* buf) {
     int8_t i = SendBuf;
     if (i < 0) return 0;
-    *buf = (uint32_t)&Send[i].Count;        // Termination flag
+    *buf = (int32_t)&Send[i].Count;        // Termination flag
     MemCpy32(buf + 1, Send[i].Packets, Send[i].Count << 3);
     return Send[i].Count;
 }

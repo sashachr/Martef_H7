@@ -130,8 +130,9 @@ public:
     float In, Out, Cntr[20];
     float InScale;
     float NormalOffset, LinearOffset, DcOffset;
-    float RPos, RVel, RAcc, RJerk;
-    float FPos, FVel, FFVel, FAcc;
+    float TPos, TVel;
+    float RPos, RVel, RAcc, RJerk, RCur;
+    float FPos, FVel, FFVel, FAcc, FJerk, FCur, FCur1;
     float Pe, Ve;
     float PIn, VIn, POut, VOut;
     float PeLimit;

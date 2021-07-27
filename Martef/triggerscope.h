@@ -108,8 +108,8 @@ struct ScopeStruct {
 
     void Init();
     void Tick();
-    uint8_t Configure(uint32_t* from, uint16_t count);
-    uint8_t Read(uint32_t* buf);
+    uint8_t Configure(int32_t* from, uint16_t count);
+    uint8_t Read(int32_t* buf);
     uint16_t FillSend(uint8_t buf);
     void Start(int8_t buf);
 };

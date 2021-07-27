@@ -75,7 +75,7 @@ int CopyString(uint8_t* dest, const uint8_t* source, int max) {
 // int GetUnitString(uint8_t* buf, int count) {
 //     return GetGuidString((GUID*)FlashGetUnitGuid(), buf, count);      
 // }
-int32_t GetStatus(uint16_t ind, uint16_t count, uint32_t* buf) {
+int32_t GetStatus(uint16_t ind, uint16_t count, int32_t* buf) {
     for (int i=0; i<count; i++) {
         switch (ind+i) {
             case 0: {   // General status
@@ -99,7 +99,7 @@ int32_t GetStatus(uint16_t ind, uint16_t count, uint32_t* buf) {
     }
     return count;
 }
-int32_t GetAxisStatus(uint16_t ind, uint16_t count, uint32_t* buf) {
+int32_t GetAxisStatus(uint16_t ind, uint16_t count, int32_t* buf) {
     for (int i=0; i<count; i++) {
         int a = ind + i;
         if (a < N_AXES) {
@@ -109,13 +109,6 @@ int32_t GetAxisStatus(uint16_t ind, uint16_t count, uint32_t* buf) {
         }
     }
     return count;
-}
-int32_t ScopeReadWrite(uint16_t ind, int16_t count, uint32_t* buf) {
-    if (count >= 0) {       // Read
-        return -Scope.Read(buf);
-    } else {   // Write
-        return Scope.Configure(buf, -count);
-    }
 }
 int32_t FlashKey(uint16_t ind, int16_t count, uint32_t* buf) {
     if (count == 1) {   // read
@@ -189,7 +182,7 @@ int32_t FlashSave(uint16_t ind, int16_t count, uint32_t* buf) {
 
 #define StructDirectRead(struc, var, maxind) \
     [](uint16_t i)->int32_t* {return (int32_t*)&struc[i].var;}, \
-    [](uint16_t ind, uint16_t count, uint32_t* buf) -> int32_t {  \
+    [](uint16_t ind, uint16_t count, int32_t* buf) -> int32_t {  \
         int16_t i = 0, j = ind; \
         for (; (i < count) && (j < maxind); i++,j++) *buf++ = struc[j].var; \
         for (; i < count; i++) *buf++ = NONE; \
@@ -199,7 +192,7 @@ int32_t FlashSave(uint16_t ind, int16_t count, uint32_t* buf) {
 
 #define StructDirectReadWrite(struc, var, maxind) \
     StructDirectRead(struc, var, maxind), \
-    [](uint16_t ind, uint16_t count, uint32_t* buf) -> int32_t {  \
+    [](uint16_t ind, uint16_t count, int32_t* buf) -> int32_t {  \
         int16_t i = 0, j = ind; \
         for (; (i < count) && (j < maxind); i++,j++) if (!IsNan(*buf)) struc[j].var = *buf++; \
         return i; \
@@ -254,7 +247,7 @@ Vardef SysVars[nSysVars] = {
     {0},
     {0},
     {0},
-    {0}, // {32064, TYPE_UINT32|VF_PROPREAD|VF_PROPWRITE, 0, [](uint16_t ind, int16_t count, uint32_t* buf) -> int32_t {  }}, //ScopeReadWrite},
+    {32064, TYPE_UINT32|VF_PROPREAD|VF_PROPWRITE, 0, [](uint16_t, uint16_t, int32_t* buf) -> int32_t { return Scope.Read(buf); }, [](uint16_t, uint16_t count, int32_t* buf) -> int32_t { return Scope.Configure(buf, count); }},
     {0},
     {0},
     {0},
@@ -324,22 +317,22 @@ Vardef SysVars[nSysVars] = {
     {0},
     {0},
     {0},
-	{1, TYPE_FLOAT|VF_DIRECTREAD|VF_DIRECTWRITE, ServoDirectRead(RPos), 0}, 
-	{1, TYPE_FLOAT|VF_DIRECTREAD|VF_DIRECTWRITE, ServoDirectRead(RVel), 0}, 
-	{1, TYPE_FLOAT|VF_DIRECTREAD|VF_DIRECTWRITE, ServoDirectReadWrite(RAcc)}, 
-	{1, TYPE_FLOAT|VF_DIRECTREAD|VF_DIRECTWRITE, ServoDirectReadWrite(RJerk)}, 
-    {0},    // {DirectFull(N_AXES, Srv, Control.RCur)},
-    {0},    // {DirectFull(N_AXES, Srv, Control.TPos)},
-    {0},    // {DirectFull(N_AXES, Srv, Control.TVel)},
+	{N_AXES, TYPE_FLOAT|VF_DIRECTREAD|VF_PROPWRITE, ServoDirectRead(RPos), 0}, 
+	{N_AXES, TYPE_FLOAT|VF_DIRECTREAD|VF_PROPWRITE, ServoDirectRead(RVel), 0}, 
+	{N_AXES, TYPE_FLOAT|VF_DIRECTREAD, ServoDirectRead(RAcc), 0}, 
+	{N_AXES, TYPE_FLOAT|VF_DIRECTREAD, ServoDirectRead(RJerk), 0}, 
+	{N_AXES, TYPE_FLOAT|VF_DIRECTREAD, ServoDirectRead(RCur), 0}, 
+	{N_AXES, TYPE_FLOAT|VF_DIRECTREAD, ServoDirectRead(TPos), 0}, 
+	{N_AXES, TYPE_FLOAT|VF_DIRECTREAD, ServoDirectRead(TVel), 0}, 
     {0},
     {0},
     {0},
-	{0}, //{1, TYPE_FLOAT|VF_DIRECTREAD, (int32_t*)&Servo.FPos, 0}, 
-	{0}, //{1, TYPE_FLOAT|VF_DIRECTREAD, (int32_t*)&Servo.FVel, 0}, 
-	{0}, //{1, TYPE_FLOAT|VF_DIRECTREAD, (int32_t*)&Servo.FAcc, 0}, 
-    {0},    //   {DirectReadonly(N_AXES, Srv, Control.FCur1)},
-    {0},    //   {DirectReadonly(N_AXES, Srv, Control.FCur2)},
-	{0}, //{1, TYPE_FLOAT|VF_DIRECTREAD, (int32_t*)&Servo.Pe, 0}, 
+	{N_AXES, TYPE_FLOAT|VF_DIRECTREAD|VF_PROPWRITE, ServoDirectRead(FPos), 0}, 
+	{N_AXES, TYPE_FLOAT|VF_DIRECTREAD, ServoDirectRead(FVel), 0}, 
+	{N_AXES, TYPE_FLOAT|VF_DIRECTREAD, ServoDirectRead(FAcc), 0}, 
+    {N_AXES, TYPE_FLOAT|VF_DIRECTREAD, ServoDirectRead(FCur), 0},
+    {N_AXES, TYPE_FLOAT|VF_DIRECTREAD, ServoDirectRead(FCur1), 0},
+	{N_AXES, TYPE_FLOAT|VF_DIRECTREAD, ServoDirectRead(Pe), 0}, 
     {0},
     {0},
     {0},

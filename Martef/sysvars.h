@@ -35,7 +35,7 @@ inline int32_t Int32FromFloat(void* addr) {return (int32_t)*(float*)addr;}
 typedef float (*FloatFromAny)(void* addr);
 typedef int32_t (*IntFromAny)(void* addr);
 
-typedef int32_t (*VarReadWrite)(uint16_t ind, uint16_t count, uint32_t* buf); // returns actual number of transferred if successful  
+typedef int32_t (*VarReadWrite)(uint16_t ind, uint16_t count, int32_t* buf); // returns actual number of transferred if successful  
 typedef int32_t* (*VarAddress)(uint16_t ind); // returns variable address  
 
 // Variable Flags

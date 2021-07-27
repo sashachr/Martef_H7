@@ -92,121 +92,90 @@ void FdProtocol(uint8_t* buf, uint16_t count, CommChannel* ch) {
 			break;
 		}
 		case MRC_READARRAY: {
-			// if (clen != 12) BREAK(MRE_FORMAT)
-			// uint16_t var = *(uint16_t*)&buf[6], ind = *(uint16_t*)&buf[8], count = *(uint16_t*)&buf[10];
-			// *(uint16_t*)(out + 6) = var;
-            // *(uint16_t*)(out + 8) = ind;
-            // *(uint16_t*)(out + 10) = count;
-            // if (var < 10000) {      // System variable
-            //     if (var >= nSysVars) BREAK(MRE_ILLEGALVARIABLE)
-			// 	Vardef* vd = SysVars + var;
-            //     int n = vd->Size;
-			// 	if (n == 0) BREAK(MRE_ILLEGALVARIABLE)
-            //     if (ind + count > n) BREAK(MRE_ILLEGALINDEX)
-			// 	if (vd->Flags & VF_DIRECTREAD) {
-			// 		*(uint16_t*)(out + 4) = 12 + (count << 2);
-			// 		if (count <= 16) {
-			// 		  	rep->Sect[0].Bytes = *(uint16_t*)(out + 4);
-            //             if ((vd->Flags & VF_TYPE) >= TYPE_INT32) {
-			// 			    MemCpy32((uint32_t*)(out + 12), vd->Array + ind, count); 
-            //             } else {
-            //                 for (int i=0; i<count; i++) *(int32_t*)(out+12+4*i) = GetSysVar(var, ind+i);
-            //             }
-			// 		} else {
-			// 		    rep->nSect = 2;
-			// 			rep->Sect[0].Bytes = 12;
-			// 			rep->Sect[1].Buf = (uint8_t*)(vd->Array + ind);
-			// 			rep->Sect[1].Bytes = count << 2;
-			// 		}
-			// 	} else if (vd->Flags & VF_PROPREAD) {
-            //         int n = SysVars[var].ReadWrite(ind, count, (uint32_t*)(out + 12));
-            //         if (n > 0) {    // n is number of 32-bit words
-	        //             *(uint16_t*)(out + 4) = rep->Sect[0].Bytes = 12 + (n << 2);
-            //         } else {        // -n is number of sections
-            //             rep->nSect = -n + 1;
-            //             uint16_t total;
-			// 			total = rep->Sect[0].Bytes = 12;
-            //             rep->Flag = (uint16_t*)*(uint32_t*)(out + 12);
-            //             uint32_t *from = (uint32_t*)(out + 16), *to = (uint32_t*)&rep->Sect[1];
-            //             for (int i = 0; i < -n; i++) {
-            //                 *to++ = *from++;
-            //                 total += (uint16_t)*from;
-            //                 *to++ = *from++;
-            //             }
-            //             *(uint16_t*)(out + 4) = total;
-            //         }
-			// 	} else BREAK(MRE_ILLEGALVARIABLE)
-			// } else if (var < 20000) {   // User scalar
-            //     if (ind + count > 1) BREAK(MRE_ILLEGALINDEX)
-            //     *(int32_t*)&out[12] = MrtInfo.Globals[var-10000];
-            //     *(uint16_t*)(out + 4) = 16;
-			// } else if (var < 30000) {   // User array
-            //     int32_t *a = (int32_t*)MrtInfo.Arrays[var-20000], n = *a;
-            //     if (ind + count > n) BREAK(MRE_ILLEGALINDEX)
-            //     rep->nSect = 2;
-            //     rep->Sect[0].Bytes = 12;
-            //     rep->Sect[1].Buf = (uint8_t*)(a + ind);
-            //     rep->Sect[1].Bytes = count << 2;
-            // }
+			if (clen != 12) BREAK(MRE_FORMAT)
+			uint16_t var = *(uint16_t*)(buf+6), ind = *(uint16_t*)(buf+8), count = *(uint16_t*)(buf+10);
+			*(uint16_t*)(out + 6) = var;
+            *(uint16_t*)(out + 8) = ind;
+            *(uint16_t*)(out + 10) = count;
+            if (var < 10000) {      // System variable
+                if (var >= nSysVars) BREAK(MRE_ILLEGALVARIABLE)
+				Vardef* vd = SysVars + var;
+                int n = vd->size;
+				if (n == 0) BREAK(MRE_ILLEGALVARIABLE)
+                if (ind + count > n) BREAK(MRE_ILLEGALINDEX)
+				*(uint16_t*)(out + 4) = 12 + (count << 2);
+				vd->read(ind, count, (int32_t*)(out+12));
+			} else if (var < 20000) {   // User scalar
+                // if (ind + count > 1) BREAK(MRE_ILLEGALINDEX)
+                // *(int32_t*)&out[12] = MrtInfo.Globals[var-10000];
+                // *(uint16_t*)(out + 4) = 16;
+			} else if (var < 30000) {   // User array
+                // int32_t *a = (int32_t*)MrtInfo.Arrays[var-20000], n = *a;
+                // if (ind + count > n) BREAK(MRE_ILLEGALINDEX)
+                // rep->nSect = 2;
+                // rep->Sect[0].Bytes = 12;
+                // rep->Sect[1].Buf = (uint8_t*)(a + ind);
+                // rep->Sect[1].Bytes = count << 2;
+            }
+		    SCB_CleanDCache_by_Addr((uint32_t*)out, *(uint16_t*)(out + 4));
 			break;
 		}
 		case MRC_WRITEARRAY: {
-			// if (clen < 12) BREAK(MRE_FORMAT)
-			// uint16_t var = *(uint16_t*)&buf[6], ind = *(uint16_t*)&buf[8], count = *(uint16_t*)&buf[10];
-			// if (clen != 12 + count * 4) BREAK(MRE_FORMAT)
-            // if (var < 10000) {      // System variable
-            //     if (var >= nSysVars) BREAK(MRE_ILLEGALVARIABLE)
-			// 	Vardef* vd = SysVars + var;
-            //     int n = vd->Size;
-			// 	if (n == 0) BREAK(MRE_ILLEGALVARIABLE)
-            //     if (ind + count > n) BREAK(MRE_ILLEGALINDEX)
-			// 	if (vd->Flags & VF_DIRECTWRITE) {
-            //         if ((vd->Flags & VF_TYPE) >= TYPE_INT32) {
-    		// 			MemCpy32(vd->Array + ind, (uint32_t*)(buf + 12), count); 
-            //         } else {
-            //             for (int i=0; i<count; i++) SetSysVar(var, ind+i, *(int32_t*)(buf+12+4*i));
-            //         }
-			// 	} else if (vd->Flags & VF_PROPWRITE) {
-	        //         if (SysVars[var].ReadWrite(ind, -count, (uint32_t*)(buf + 12)) <= 0) BREAK(MRE_ILLEGALCOMMAND)
-			// 	} else BREAK(MRE_READONLYVARIABLE)
-			// } else if (var < 20000) {   // User array
-            //     int32_t v = var - 10000;
-            //     if (v >= MrtInfo.nGlobals) BREAK(MRE_ILLEGALVARIABLE)
-            //     if (ind + count > 1) BREAK(MRE_ILLEGALINDEX)
-            //     MrtInfo.Globals[v] = *(int32_t*)(buf+12);
-			// } else if (var < 30000) {   // User array
-            //     int32_t v = var - 20000;
-            //     if (v >= MrtInfo.nArrays) BREAK(MRE_ILLEGALVARIABLE)
-            //     int32_t *a = (int32_t*)MrtInfo.Arrays[v], n = *a;
-            //     if (ind + count > n) BREAK(MRE_ILLEGALINDEX)
-			// 	MemCpy32(a + ind + 1, (int32_t*)(buf + 12), count); 
-			// }
+			if (clen < 12) BREAK(MRE_FORMAT)
+			uint16_t var = *(uint16_t*)(buf+6), ind = *(uint16_t*)(buf+8), count = *(uint16_t*)(buf+10);
+			if (clen != 12 + count * 4) BREAK(MRE_FORMAT)
+            if (var < 10000) {      // System variable
+                if (var >= nSysVars) BREAK(MRE_ILLEGALVARIABLE)
+				Vardef* vd = SysVars + var;
+                int n = vd->size;
+				if (n == 0) BREAK(MRE_ILLEGALVARIABLE)
+                if (ind + count > n) BREAK(MRE_ILLEGALINDEX)
+				if (vd->write == 0) BREAK(MRE_READONLYVARIABLE)
+				vd->write(ind, count, (int32_t*)(buf+12));
+			} else if (var < 20000) {   // User array
+                // int32_t v = var - 10000;
+                // if (v >= MrtInfo.nGlobals) BREAK(MRE_ILLEGALVARIABLE)
+                // if (ind + count > 1) BREAK(MRE_ILLEGALINDEX)
+                // MrtInfo.Globals[v] = *(int32_t*)(buf+12);
+			} else if (var < 30000) {   // User array
+                // int32_t v = var - 20000;
+                // if (v >= MrtInfo.nArrays) BREAK(MRE_ILLEGALVARIABLE)
+                // int32_t *a = (int32_t*)MrtInfo.Arrays[v], n = *a;
+                // if (ind + count > n) BREAK(MRE_ILLEGALINDEX)
+				// MemCpy32(a + ind + 1, (int32_t*)(buf + 12), count); 
+			}
+		    SCB_CleanDCache_by_Addr((uint32_t*)out, 8);
 			break;
 		}
 		case MRC_READMULTI: {
-			// if (clen < 12) BREAK(MRE_FORMAT)
-			// uint16_t* ip = (uint16_t*)&buf[6];
-			// uint16_t count = *ip++;
-			// if (count > 64) BREAK(MRE_FORMAT)
-			// if (clen != 8 + 4 * count) BREAK(MRE_FORMAT)
-			// int32_t* op = (int32_t*)&out[8];
-			// for (int i = 0; i < count; i++) {
-			// 	uint16_t var = *ip++, ind = *ip++;
-            //     if (var < 10000) {      // System variable
-	    	// 		*op++ = GetSysVar(var, ind);
-    		// 	} else if (var < 20000) {   // User scalar
-            //         uint16_t v = var - 10000;
-            //         *op++ = ((v < MrtInfo.nGlobals) && (ind == 0)) ? MrtInfo.Globals[v] : -1;                
-    		// 	} else if (var < 30000) {   // User array
-            //         uint16_t v = var - 20000;
-            //         int32_t* a = (v < MrtInfo.nArrays) ? (int32_t*)MrtInfo.Arrays[v] : 0;
-            //         *op++ = ((a > 0) && (ind < *a)) ? a[ind+1] : -1;                
-            //     } else {
-            //         *op++ = -1;                
-            //     }
-			// }	
-			// *(uint16_t*)&out[6] = count;
-			// *(uint16_t*)&out[4] = rep->Sect[0].Bytes = clen;
+			if (clen < 12) BREAK(MRE_FORMAT)
+			uint16_t* ip = (uint16_t*)(buf+6);
+			uint16_t count = *ip++;
+			if (count > 64) BREAK(MRE_FORMAT)
+			if (clen != 8 + 4 * count) BREAK(MRE_FORMAT)
+			int32_t* op = (int32_t*)(out+8);
+			for (int i = 0; i < count; i++) {
+				uint16_t var = *ip++, ind = *ip++;
+                if (var < 10000) {      // System variable
+	    			if ((var >= nSysVars) || (SysVars[var].size == 0)) {
+						*op++ = -1;
+					} else {
+						SysVars[var].read(ind, 1, op++);
+					} 
+    			} else if (var < 20000) {   // User scalar
+                    // uint16_t v = var - 10000;
+                    // *op++ = ((v < MrtInfo.nGlobals) && (ind == 0)) ? MrtInfo.Globals[v] : -1;                
+    			} else if (var < 30000) {   // User array
+                    // uint16_t v = var - 20000;
+                    // int32_t* a = (v < MrtInfo.nArrays) ? (int32_t*)MrtInfo.Arrays[v] : 0;
+                    // *op++ = ((a > 0) && (ind < *a)) ? a[ind+1] : -1;                
+                } else {
+                    *op++ = -1;                
+                }
+			}	
+			*(uint16_t*)(out+6) = count;
+			*(uint16_t*)(out+4) = 8 + (count << 2);
+		    SCB_CleanDCache_by_Addr((uint32_t*)out, *(uint16_t*)(out + 4));
 			break;
 		}
 		case MRC_READSTRING: {
@@ -223,7 +192,7 @@ void FdProtocol(uint8_t* buf, uint16_t count, CommChannel* ch) {
 				ml->CLAR = (uint32_t)(ml + 1);
 				total += ml->CBNDTR & 0x0001FFFF;
 			} 
-			int fill = count - i + (4 - (total & 3) & 3);  // overindexing and alignment
+			int fill = count - i + ((4 - (total & 3)) & 3);  // overindexing and alignment
 			if (fill) {
 				if (ml != 0) (ml-1)->CLAR = (uint32_t)(mlReply);
 				Mdma::InitLink(mlReply[0], 0x70000008, fill, (uint32_t)emptystring, (uint32_t)(out + total));
