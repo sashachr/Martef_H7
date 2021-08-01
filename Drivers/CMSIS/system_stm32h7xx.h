@@ -83,6 +83,7 @@ extern const  uint8_t D1CorePrescTable[16] ; /*!< D1CorePrescTable prescalers ta
   * @{
   */
 
+extern void RamInit(void);
 extern void SystemInit(void);
 extern void SystemCoreClockUpdate(void);
 /**

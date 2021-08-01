@@ -12,10 +12,12 @@
 
 # Built files
 build/
+Debug/
 
 # VSC cash
 .vscode/
 
 AllDrivers/
+.hide/
 
 GitVersion.h

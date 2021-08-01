@@ -18,6 +18,8 @@
   */
 /* USER CODE END Header */
 /* Includes ------------------------------------------------------------------*/
+#include <stdint.h>
+#include "martef.h"
 #include "main.h"
 
 /* Private includes ----------------------------------------------------------*/
@@ -56,8 +58,6 @@ static void MX_GPIO_Init(void);
 /* USER CODE BEGIN 0 */
 
 /* USER CODE END 0 */
-
-void MartefInit();
 
 /**
   * @brief  The application entry point.

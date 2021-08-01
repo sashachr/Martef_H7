@@ -1,6 +1,7 @@
 // MARTEF.CPP
 // COPYRIGHT 2012 Sasha Chrichov
 
+//#include <stdint.h>
 #include "chip.h"
 
 #include "global.h"
