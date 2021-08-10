@@ -15,7 +15,7 @@ class CommUart : public CommChannelDma {
     private: void TickRead();
     private: void TickWrite();
     public: virtual int StartRead();
-    public: virtual int StartWrite();
+    public: virtual int StartWrite(uint16_t count);
 };
 
 class CommI2c : public CommChannel {
@@ -122,7 +122,7 @@ void CommUart::TickRead() {
     int n = InbufSize - ReadCount();
     if (n == 0) return;
     if (received == 0) {
-        SCB_InvalidateDCache_by_Addr(Inbuf, 1);
+        InvalidateDCacheIfUsed(Inbuf, 1);
         if (Inbuf[0] != 0xFD) {StartRead(); return;}      // Garbage
     }
     if (n != received) {
@@ -135,17 +135,33 @@ void CommUart::TickRead() {
     }
     if (n < 6) return;
     if (readlen == 0) {
-        SCB_InvalidateDCache_by_Addr(Inbuf, 6);
+        InvalidateDCacheIfUsed(Inbuf, 6);
         readlen = *(uint16_t*)&Inbuf[4];
         if ((readlen > 128) || (readlen < 8)) {StartRead(); return;}      // Garbage
     }
     if ((n < readlen) || (WriteCount() > 0)) return;
-    SCB_InvalidateDCache_by_Addr(Inbuf, readlen);
+    InvalidateDCacheIfUsed(Inbuf, readlen);
    	CommandExecute((uint8_t*)Inbuf, readlen, this);
     StartRead();
 }
 
 void CommUart::TickWrite() {
+    if (SaDma && !BusyWrite()) {
+        if (SaDma->pCounter < SaDma->pCount) {
+            PacketStruct& p = SaDma->Packets[SaDma->pCounter++];
+            uint8_t dtcm = (uint32_t)p.Addr < 0x20020000;
+            if (dtcm) {
+    			Mdma::InitHard(TxMdma, 0x00000040, 0x700C0AAA, p.Count, (uint32_t)p.Addr, (uint32_t)Outbuf, 0, 0, 0x00010000);
+                Mdma::Start(TxMdma);
+                StartWriteDma((void*)&hard->TDR, Outbuf, p.Count);
+            } else {
+                StartWriteDma((void*)&hard->TDR, p.Addr, p.Count);
+            }
+        } else {
+            SaDma->pCount = 0;
+            SaDma = 0;
+        }
+    }
 }
 
 void CommUart::Tick() {
@@ -155,17 +171,18 @@ void CommUart::Tick() {
 
 int CommUart::StartRead() {
     hard->CR3 &= (uint16_t)~0x0040; 	// Disable USART Rx DMA request
-    uint32_t dummy = hard->ISR;          // Read SR to clear errors
-    dummy = hard->RDR;                   // Read DR to clear errors     
+//    uint32_t dummy = hard->ISR;          // Read SR to clear errors
+//    dummy = hard->RDR;                   // Read DR to clear errors
+    hard->ICR = 0x0000103F;				// Clear read flags
     StartReadDma((void*)&hard->RDR, Inbuf, InbufSize);      // Start DMA
     received = readlen = 0;
     hard->CR3 |= (uint16_t)0x0040;		// Enable USART Rx DMA request
 	return 0;
 }
 
-int CommUart::StartWrite() {
+int CommUart::StartWrite(uint16_t count) {
     hard->CR3 &= (uint16_t)~0x0080;		// Disable USART Tx DMA request
-    StartWriteDma((void*)&hard->TDR, Outbuf, *(uint16_t*)(Outbuf + 4));
+    StartWriteDma((void*)&hard->TDR, Outbuf, (count > 0) ? count : *(uint16_t*)(Outbuf + 4));
     hard->CR3 |= (uint16_t)0x0080;		// Enable USART Tx DMA requests
     hard->ISR = (uint16_t)~0x0040;		// Clear TC bit in the SR register by writing 0 to it
 	return 0;

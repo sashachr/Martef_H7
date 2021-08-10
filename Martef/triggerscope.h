@@ -87,15 +87,6 @@ struct ScopeSweepStruct {
 	uint8_t Full;					// Flag of buffer overrun
 };
 
-struct PacketStruct {
-	uint8_t* Addr;
-	uint16_t Count;
-};
-struct MultiPacketStruct {
-    uint8_t Count;
-    struct PacketStruct Packets[4];
-};
-
 struct ScopeStruct {
 	struct ScopeConfigStruct Config;
 	struct ScopeTrigStruct Trig;
@@ -104,12 +95,12 @@ struct ScopeStruct {
 	uint8_t Stage, Mode;
     int8_t StoreBuf, SendBuf;				
 	int32_t *pStore;		// Pointers to current collection buffer and read buffer};
-    struct MultiPacketStruct Send[2];
+    struct SaDmaStruct Send[2];
 
     void Init();
     void Tick();
     uint8_t Configure(int32_t* from, uint16_t count);
-    uint8_t Read(int32_t* buf);
+    int32_t Read(int32_t* buf);
     uint16_t FillSend(uint8_t buf);
     void Start(int8_t buf);
 };

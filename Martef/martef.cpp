@@ -7,14 +7,15 @@
 #include "global.h"
 #include "thread.h"
 #include "adc.h"
+#include "communication.h"
 #include "triggerscope.h"
+#include "siggen.h"
 #include "encoder.h"
 #include "servo.h"
 #include "io.h"
 #include "pins.h"
 #include "systick.h"
 #include "command.h"
-#include "communication.h"
 #include "martef.h"
 
 TimerStruct Timer;
@@ -30,7 +31,7 @@ void MartefInit() {
     CommandInit();
     Io.Init();
     Encoder.Init();
-    for (int i = 0; i < N_AXES; i++) Servo[i].Init();
+    for (int i = 0; i < NAX; i++) Servo[i].Init();
     Adc.Init();
     Scope.Init();
 	ThreadsInit();
@@ -62,9 +63,10 @@ void MartefTick() {
     GPIOF->BSRR = 0x00004000;           // Set TP2
 //    Adc.Tick();
     if (!Timer.initialDelayCounter) {
-        for (int i = 0; i < N_AXES; i++) Servo[i].Tick();
+        for (int i = 0; i < NAX; i++) Servo[i].Tick();
 //        Dac.Tick();
 //        LedStatus.Tick();
+        for (int i = 0; i < 2; i++) Signals[i].Tick();
         Scope.Tick();
         CommunicationTick();
     }

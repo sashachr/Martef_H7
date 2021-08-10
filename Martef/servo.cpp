@@ -11,7 +11,7 @@
 #include "Io.h"
 #include "Servo.h"
 
-ServoStruct Servo[N_AXES];
+ServoStruct Servo[NAX];
 
 ServoStruct::ServoStruct() {
 	uhrPeriod = TICKS_IN_MILLISECOND;		// 1 msec period

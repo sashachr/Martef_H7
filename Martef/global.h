@@ -6,7 +6,7 @@
 
 typedef uint8_t  byte;
 
-#define N_AXES        6               // Number of axes
+#define NAX        6               // Number of axes
 #define N_ENCODERS    2               // Number of Encoders
 #define N_PWMS		  2				  // Number of PWMs
 #define N_CHANNELS    3               // Number of communication channels
@@ -126,6 +126,17 @@ extern uint32_t Properties[];
 #define PROGRAM_BLOCK 64
 
 extern uint8_t Motor;      // 1/2/4/6/8/12/16/24=HR1/2/4/6/8/12/16/24, 101/102/104/106/108/112/116/124=SE1/2/4/6/8/12/16/24
+
+#if defined(USE_DCACHE) 
+    #define InvalidateDCacheIfUsed(addr, size) SCB_InvalidateDCache_by_Addr(addr, size) 
+    #define CleanDCacheIfUsed(addr, size) SCB_CleanDCache_by_Addr(addr, size)
+    #define CleanInvalidateDCacheIfUsed(addr, size) SCB_CleanInvalidateDCache_by_Addr(addr, size)
+#else
+    #define InvalidateDCacheIfUsed(addr, size) 
+    #define CleanDCacheIfUsed(addr, size) 
+    #define CleanInvalidateDCacheIfUsed(addr, size) 
+#endif
+
 
 void GetGuidUnit(uint32_t* dest);
 inline void GuidFromString(GUID* guid, const uint8_t* str) {

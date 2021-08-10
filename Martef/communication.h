@@ -1,5 +1,16 @@
 #pragma once
 
+// Software-assisted DMA
+struct PacketStruct {
+	uint8_t* Addr;
+	uint16_t Count;
+};
+struct SaDmaStruct {
+    uint8_t pCount;
+    uint8_t pCounter;
+    struct PacketStruct Packets[5];
+};
+
 // MDMA services
 struct MdmaLink {
     uint32_t  CTCR;      // Transfer Configuration register,       Address offset: 0x50
@@ -17,7 +28,7 @@ class Mdma {
     public: static void InitLink(MdmaLink& ml, uint32_t CTCR, uint32_t CBNDTR, uint32_t CSAR = 0, uint32_t CDAR = 0, uint32_t CBRUR = 0, uint32_t CLAR = 0, uint32_t CTBR = 0, uint32_t CMAR = 0, uint32_t CMDR = 0) {
         ml.CTCR = CTCR; ml.CBNDTR = CBNDTR; ml.CSAR = CSAR; ml.CDAR = CDAR; ml.CBRUR = CBRUR; ml.CLAR = CLAR; ml.CTBR = CTBR; ml.CMAR = CMAR; ml.CMDR = CMDR;  
     }
-    public: static void InitHard(MDMA_Channel_TypeDef* c, uint32_t CCR, uint32_t CTCR, uint32_t CBNDTR, uint32_t CSAR, uint32_t CDAR, uint32_t CBRUR, uint32_t CLAR, uint32_t CTBR, uint32_t CMAR, uint32_t CMDR) {
+    public: static void InitHard(MDMA_Channel_TypeDef* c, uint32_t CCR, uint32_t CTCR, uint32_t CBNDTR, uint32_t CSAR, uint32_t CDAR, uint32_t CBRUR = 0, uint32_t CLAR = 0, uint32_t CTBR = 0, uint32_t CMAR = 0, uint32_t CMDR = 0) {
         c->CCR = CCR; c->CTCR = CTCR; c->CBNDTR = CBNDTR; c->CSAR = CSAR; c->CDAR = CDAR; c->CBRUR = CBRUR; c->CLAR = CLAR; c->CTBR = CTBR; c->CMAR = CMAR; c->CMDR = CMDR;  
     }
     public: static void InitHard(MDMA_Channel_TypeDef* c, uint32_t CCR, MdmaLink& ml) {
@@ -25,6 +36,10 @@ class Mdma {
         while (c->CCR & 1) ;
         c->CIFCR = 0x0000001F;  // Clear flags
         c->CCR = CCR; c->CTCR = ml.CTCR; c->CBNDTR = ml.CBNDTR; c->CSAR = ml.CSAR; c->CDAR = ml.CDAR; c->CBRUR = ml.CBRUR; c->CLAR = ml.CLAR; c->CTBR = ml.CTBR; c->CMAR = ml.CMAR; c->CMDR = ml.CMDR;  
+    }
+    public: static void Start(MDMA_Channel_TypeDef* c) {
+        c->CCR |= 0x00000001;	// Enable
+        c->CCR |= 0x00010000;	// Start
     }
 };
 
@@ -34,10 +49,13 @@ class CommChannel {
 	protected: uint8_t Channel;
     public: MDMA_Channel_TypeDef* RxMdma;
     public: MDMA_Channel_TypeDef* TxMdma;
-	protected: CommChannel(uint8_t index) : Channel(index) {}
+    public: SaDmaStruct* SaDma;
+	protected: CommChannel(uint8_t index) : Channel(index), SaDma(0) {}
     public: virtual void Tick() = 0;
     public: virtual int StartRead() {return 0;}
-    public: virtual int StartWrite() {return 0;}
+    public: virtual int StartWrite(uint16_t count) {return 0;}
+    public: virtual int BusyRead() {return 0;}
+    public: virtual int BusyWrite(uint16_t count) {return 0;}
 };
 
 class CommChannelDma : public CommChannel {
@@ -55,6 +73,8 @@ class CommChannelDma : public CommChannel {
     protected: void StartWriteDma(void* periphreg, void* buf, int len);
     protected: int ReadCount() {return RxStream->NDTR;}
     protected: int WriteCount() {return TxStream->NDTR;}
+    public: virtual int BusyRead() {return RxStream->CR & 1;}
+    public: virtual int BusyWrite() {return TxStream->CR & 1;}
     private: void FindFlags(uint8_t dma, uint8_t stream, uint32_t volatile** flags, uint32_t* completemask, uint32_t* clearmask);
 };
 

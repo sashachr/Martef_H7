@@ -5,10 +5,10 @@
 #include "chip.h"
 #include <string.h>
 
-#include "Global.h"
-#include "SysVars.h"
-//#include "Martel.h"
-//#include "Cdf.h"
+#include "global.h"
+#include "sysvar.h"
+//#include "martel.h"
+//#include "cdf.h"
 #include "communication.h"
 #include "command.h"
 
@@ -41,6 +41,9 @@ __attribute__((section(".ramD1init"))) uint8_t ManufacturerString[] = "XACT Robo
 __attribute__((section(".ramD1"))) uint8_t SerialNumberString[60];
 __attribute__((section(".ramD1"))) uint8_t FwVersionString[60];
 __attribute__((section(".ramD1"))) uint8_t ApplicationString[60];
+__attribute__((section(".ramD1init"))) uint8_t CdfString[] = 
+	#include "xact.cdc"
+;
 __attribute__((section(".ramD1init"))) static uint8_t emptystring[1] = { 0 };
 __attribute__((section(".mdmalink"))) static struct MdmaLink mlStrings[nstrings];
 #define nguids 5
@@ -59,6 +62,7 @@ void FdProtocol(uint8_t* buf, uint16_t count, CommChannel* ch) {
 	out[0] = 0xFD; out[1] = 0;		// Success assumed
 	*(uint16_t*)(out + 2) = id;
 	*(uint16_t*)(out + 4) = 8;		// Default prompt assumed
+	uint16_t outlen = 8;			// Reply length or partial reply length in case of SaDma
 	*(uint16_t*)(out + 6) = 0;		// Default prompt assumed
 	switch (buf[1]) {
 		case MRC_READVAR: {
@@ -96,15 +100,24 @@ void FdProtocol(uint8_t* buf, uint16_t count, CommChannel* ch) {
 			uint16_t var = *(uint16_t*)(buf+6), ind = *(uint16_t*)(buf+8), count = *(uint16_t*)(buf+10);
 			*(uint16_t*)(out + 6) = var;
             *(uint16_t*)(out + 8) = ind;
-            *(uint16_t*)(out + 10) = count;
             if (var < 10000) {      // System variable
                 if (var >= nSysVars) BREAK(MRE_ILLEGALVARIABLE)
 				Vardef* vd = SysVars + var;
                 int n = vd->size;
 				if (n == 0) BREAK(MRE_ILLEGALVARIABLE)
                 if (ind + count > n) BREAK(MRE_ILLEGALINDEX)
-				*(uint16_t*)(out + 4) = 12 + (count << 2);
-				vd->read(ind, count, (int32_t*)(out+12));
+				int32_t acount = vd->read(ind, count, (int32_t*)(out+12));
+				if (acount >= 0) {
+		            *(uint16_t*)(out + 10) = acount;
+					outlen = *(uint16_t*)(out + 4) = 12 + (acount << 2);
+				} else {
+					ch->SaDma = (SaDmaStruct*)*(uint32_t*)(out+12);
+					uint16_t len = 0;
+					for (int i = 0; i < ch->SaDma->pCount; i++) len += ch->SaDma->Packets[i].Count;
+		            *(uint16_t*)(out + 10) = len >> 2;
+		            *(uint16_t*)(out + 4) = 12 + len;
+		            outlen = 12;
+				}
 			} else if (var < 20000) {   // User scalar
                 // if (ind + count > 1) BREAK(MRE_ILLEGALINDEX)
                 // *(int32_t*)&out[12] = MrtInfo.Globals[var-10000];
@@ -117,7 +130,7 @@ void FdProtocol(uint8_t* buf, uint16_t count, CommChannel* ch) {
                 // rep->Sect[1].Buf = (uint8_t*)(a + ind);
                 // rep->Sect[1].Bytes = count << 2;
             }
-		    SCB_CleanDCache_by_Addr((uint32_t*)out, *(uint16_t*)(out + 4));
+		    CleanDCacheIfUsed((uint32_t*)out, outlen);
 			break;
 		}
 		case MRC_WRITEARRAY: {
@@ -144,7 +157,7 @@ void FdProtocol(uint8_t* buf, uint16_t count, CommChannel* ch) {
                 // if (ind + count > n) BREAK(MRE_ILLEGALINDEX)
 				// MemCpy32(a + ind + 1, (int32_t*)(buf + 12), count); 
 			}
-		    SCB_CleanDCache_by_Addr((uint32_t*)out, 8);
+		    CleanDCacheIfUsed((uint32_t*)out, 8);
 			break;
 		}
 		case MRC_READMULTI: {
@@ -174,8 +187,8 @@ void FdProtocol(uint8_t* buf, uint16_t count, CommChannel* ch) {
                 }
 			}	
 			*(uint16_t*)(out+6) = count;
-			*(uint16_t*)(out+4) = 8 + (count << 2);
-		    SCB_CleanDCache_by_Addr((uint32_t*)out, *(uint16_t*)(out + 4));
+			outlen = *(uint16_t*)(out+4) = 8 + (count << 2);
+		    CleanDCacheIfUsed((uint32_t*)out, outlen);
 			break;
 		}
 		case MRC_READSTRING: {
@@ -184,27 +197,27 @@ void FdProtocol(uint8_t* buf, uint16_t count, CommChannel* ch) {
             if (count > 10) count = 10;
             *(uint16_t*)(out + 8) = ind;
             *(uint16_t*)(out + 10) = count;
-            int total = 12;
+            outlen = 12;
 			struct MdmaLink* ml = (ind < nstrings) ? mlStrings + ind : 0;
 			int i = 0, ii = ind;
             for ( ; (i < count) && (ii < nstrings); i++, ii++, ml++) {
-				ml->CDAR = (uint32_t)(out + total);
+				ml->CDAR = (uint32_t)(out + outlen);
 				ml->CLAR = (uint32_t)(ml + 1);
-				total += ml->CBNDTR & 0x0001FFFF;
+				outlen += ml->CBNDTR & 0x0001FFFF;
 			} 
-			int fill = count - i + ((4 - (total & 3)) & 3);  // overindexing and alignment
+			int fill = count - i + ((4 - (outlen & 3)) & 3);  // overindexing and alignment
 			if (fill) {
 				if (ml != 0) (ml-1)->CLAR = (uint32_t)(mlReply);
-				Mdma::InitLink(mlReply[0], 0x70000008, fill, (uint32_t)emptystring, (uint32_t)(out + total));
-				total += fill; 
+				Mdma::InitLink(mlReply[0], 0x70000008, fill, (uint32_t)emptystring, (uint32_t)(out + outlen));
+				outlen += fill; 
 			} else {
 				(ml-1)->CLAR = 0;
 			}
 			MDMA_Channel_TypeDef* mc = ch->TxMdma;
 			Mdma::InitHard(mc, 0x00000040, (ind < nstrings) ? mlStrings[ind] : mlReply[0]);
-			mc->CCR |= 0x00000001;	// Enable
-			mc->CCR |= 0x00010000;	// Start
-            *(uint16_t*)(out + 4) = total;
+			Mdma::Start(mc);
+            *(uint16_t*)(out + 4) = outlen;
+		    CleanDCacheIfUsed((uint32_t*)out, 12);
             break;
         }
 		case MRC_WRITESTRING: {
@@ -222,28 +235,27 @@ void FdProtocol(uint8_t* buf, uint16_t count, CommChannel* ch) {
 			if (clen != 12) BREAK(MRE_FORMAT)
 			uint16_t ind = *(uint16_t*)&buf[8], count = *(uint16_t*)&buf[10];
 			*(uint16_t*)(out + 8) = ind; *(uint16_t*)(out + 10) = count;
-            int total = 12;
+            outlen = 12;
 			struct MdmaLink* ml = (ind < nguids) ? mlGuids + ind : 0;
 			int i = 0, ii = ind;
             for ( ; (i < count) && (ii < nguids); i++, ii++, ml++) {
-				ml->CDAR = (uint32_t)(out + total);
+				ml->CDAR = (uint32_t)(out + outlen);
 				ml->CLAR = (uint32_t)(ml + 1);
-				total += 16;
+				outlen += 16;
 			} 
 			int fill = count - i;  // overindexing
 			if (fill) {
 				if (ml != 0) (ml-1)->CLAR = (uint32_t)(mlReply);
-				Mdma::InitLink(mlReply[0], 0x70000008, fill << 4, (uint32_t)emptystring, (uint32_t)(out + total));
-				total += fill << 4; 
+				Mdma::InitLink(mlReply[0], 0x70000008, fill << 4, (uint32_t)emptystring, (uint32_t)(out + outlen));
+				outlen += fill << 4; 
 			} else {
 				(ml-1)->CLAR = 0;
 			}
-            *(uint16_t*)(out + 4) = total;
-		    SCB_CleanDCache_by_Addr((uint32_t*)out, 32);
+            *(uint16_t*)(out + 4) = outlen;
 			MDMA_Channel_TypeDef* mc = ch->TxMdma;
 			Mdma::InitHard(mc, 0x00000040, (ind < nguids) ? mlGuids[ind] : mlReply[0]);
-			mc->CCR |= 0x00000001;	// Enable
-			mc->CCR |= 0x00010000;	// Start
+			Mdma::Start(mc);
+		    CleanDCacheIfUsed((uint32_t*)out, 12);
             break;
 		}
 		case MRC_UPGRADE: {
@@ -292,7 +304,7 @@ void FdProtocol(uint8_t* buf, uint16_t count, CommChannel* ch) {
 //	*(uint16_t*)&out[4] = len;
 //	rep->nSect = sect; 
 	//rep->cSect = -1;
-	ch->StartWrite();
+	ch->StartWrite(outlen);
 }
 
 void CommandExecute(uint8_t* com, int comcount, CommChannel* ch)
@@ -310,7 +322,7 @@ void CommandInit() {
 		FwVersionString,
 		ApplicationString,
 		0, // MotorString,
-		0, // CDF,
+		CdfString, // CDF,
 		0, 0, 0
 	};
 	const GUID* guids[nguids] = {

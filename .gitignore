@@ -14,10 +14,14 @@
 build/
 Debug/
 
-# VSC cash
+# VSC and VS
 .vscode/
+.vs/
 
+# Python
+env/
+
+# Miscelanous
 AllDrivers/
 .hide/
-
 GitVersion.h

@@ -1,3 +1,4 @@
+
 //  
 // Copyright (c) Sasha (Alexander) Chrichoff. All rights reserved.
 // Under no circumstances may you delete or modify this file header.
@@ -54,7 +55,7 @@ struct Vardef {
     VarReadWrite write;
 };
 
-#define nSysVars 334
+#define nSysVars 346
 extern Vardef SysVars[];
 
 
