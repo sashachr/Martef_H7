@@ -34,18 +34,34 @@ enum MRC_COMMAND {
 	MRC_UPGRADE = 250,
 };
 
+#define RamD2HeapSize  4096
+__attribute__((section(".ramD2"))) uint32_t RamD2Heap[RamD2HeapSize];
+uint32_t* RamD2HeapFree = RamD2Heap;
+
+uint32_t* AllocRamD2(uint32_t size) {
+	size = (size + 3) >> 2;		// number of 32-bit words
+	if (((RamD2HeapSize >> 2) - (RamD2HeapFree - RamD2Heap)) < size) return 0;
+	uint32_t* r = RamD2HeapFree;
+	RamD2HeapFree += size;
+	return r;
+}
+
+#define nstrings 7
+uint8_t* DStrings[nstrings];
+uint16_t DStringsLen[nstrings];
+SaDmaStruct dmaStrings;
+
 __attribute__((section(".mdmalink"))) static struct MdmaLink mlReply[4];
-#define nstrings 10
 __attribute__((section(".ramD1init"))) uint8_t ProductString[] = "Martef-H7";
 __attribute__((section(".ramD1init"))) uint8_t ManufacturerString[] = "XACT Robotics";
 __attribute__((section(".ramD1"))) uint8_t SerialNumberString[60];
 __attribute__((section(".ramD1"))) uint8_t FwVersionString[60];
 __attribute__((section(".ramD1"))) uint8_t ApplicationString[60];
-__attribute__((section(".ramD1init"))) uint8_t CdfString[] = 
+__attribute__((section(".ramD2init"))) uint8_t CdfString[] = 
 	#include "xact.cdc"
+	"\x00\x00\x00"	// for alignment
 ;
 __attribute__((section(".ramD1init"))) static uint8_t emptystring[1] = { 0 };
-__attribute__((section(".mdmalink"))) static struct MdmaLink mlStrings[nstrings];
 #define nguids 5
 __attribute__((section(".ramD1init"))) GUID GuidProduct = { 0xc7d043ae, 0x7161, 0x4b5b, { 0xb3, 0xc0, 0x72, 0x1, 0xc8, 0x6d, 0x9c, 0x1 } }; // {C7D043AE-7161-4B5B-B3C0-7201C86D9C01}
 __attribute__((section(".ramD1init"))) GUID GuidManufacturer = { 0xebb27f3b, 0x758f, 0x4dbe, { 0x94, 0x93, 0x4, 0x9f, 0xec, 0x2e, 0x8f, 0x22 } };  // {EBB27F3B-758F-4DBE-9493-049FEC2E8F22}
@@ -194,30 +210,33 @@ void FdProtocol(uint8_t* buf, uint16_t count, CommChannel* ch) {
 		case MRC_READSTRING: {
 			if (clen != 12) BREAK(MRE_FORMAT)
 			uint16_t ind = *(uint16_t*)&buf[8], count = *(uint16_t*)&buf[10];
-            if (count > 10) count = 10;
+			if (ind >= nstrings) BREAK(MRE_WRONGINDEX)
+			int16_t rem = nstrings - ind; 
+			if (count > rem) count = rem;
+            outlen = 0;
+			dmaStrings.pCount = dmaStrings.pCounter = 0;
+			PacketStruct* p = dmaStrings.Packets;
+			if (ind < 6) {
+				p->Addr = DStrings[ind];
+				for (int i = 0; i < ((count < 6) ? count : 6); i++) outlen += DStringsLen[i];
+				p->Count = outlen;
+				dmaStrings.pCount++; p++;
+			}
+			if (ind+count == 7) {
+				p->Addr = DStrings[6];
+				p->Count = DStringsLen[6];
+				outlen += p->Count;
+				uint16_t align = -outlen & 0x0003;	// alignment
+				p->Count += align; outlen += align;
+				dmaStrings.pCount++; 
+			}
+			ch->SaDma = &dmaStrings;
+            *(uint16_t*)(out + 4) = 12 + outlen;
+            *(uint16_t*)(out + 6) = 0;
             *(uint16_t*)(out + 8) = ind;
             *(uint16_t*)(out + 10) = count;
-            outlen = 12;
-			struct MdmaLink* ml = (ind < nstrings) ? mlStrings + ind : 0;
-			int i = 0, ii = ind;
-            for ( ; (i < count) && (ii < nstrings); i++, ii++, ml++) {
-				ml->CDAR = (uint32_t)(out + outlen);
-				ml->CLAR = (uint32_t)(ml + 1);
-				outlen += ml->CBNDTR & 0x0001FFFF;
-			} 
-			int fill = count - i + ((4 - (outlen & 3)) & 3);  // overindexing and alignment
-			if (fill) {
-				if (ml != 0) (ml-1)->CLAR = (uint32_t)(mlReply);
-				Mdma::InitLink(mlReply[0], 0x70000008, fill, (uint32_t)emptystring, (uint32_t)(out + outlen));
-				outlen += fill; 
-			} else {
-				(ml-1)->CLAR = 0;
-			}
-			MDMA_Channel_TypeDef* mc = ch->TxMdma;
-			Mdma::InitHard(mc, 0x00000040, (ind < nstrings) ? mlStrings[ind] : mlReply[0]);
-			Mdma::Start(mc);
-            *(uint16_t*)(out + 4) = outlen;
 		    CleanDCacheIfUsed((uint32_t*)out, 12);
+			outlen = 12;
             break;
         }
 		case MRC_WRITESTRING: {
@@ -318,13 +337,13 @@ void CommandInit() {
 	const uint8_t* strs[nstrings] = {
 		ProductString,
 		ManufacturerString,
-		SerialNumberString, 
-		FwVersionString,
-		ApplicationString,
-		0, // MotorString,
+		0, // SerialNumberString, 
+		0, // FwVersionString,
+		0,
+		0, // ApplicationString,
 		CdfString, // CDF,
-		0, 0, 0
 	};
+	uint16_t tstrl = 0;
 	const GUID* guids[nguids] = {
 		&GuidProduct,
 		&GuidManufacturer,
@@ -332,16 +351,21 @@ void CommandInit() {
 		&GuidFwVersion,
 		0
 	};
-	// String processing
-	SerialNumberString[0] = 0;
-	FwVersionString[0] = 0;
-	ApplicationString[0] = 0;
-	uint32_t CTCR = 0x7000000A;		// Software request, TRGM Full Transfer, byte sizes, no burst, source/target increment 
-	for (int i = 0; i < nstrings; i++) {
-		int len = (strs[i] == 0) ? 0 : strlen((char*)strs[i]);
-		Mdma::InitLink(mlStrings[i], CTCR | (len << 18), len + 1, (uint32_t)((len == 0) ? emptystring : strs[i]));
-	} 
-	// Guid processing
+	// Copy strings up to CDF into SRAM2 buffer
+	int i;
+	for (i = 0; i < nstrings; i++) {
+		DStringsLen[i] = ((strs[i] == 0) || (strs[i][0] == 0) || (strs[i][0] == 0xFF)) ? 1 : strlen((char*)strs[i]) + 1;
+		if (i < 6) tstrl += DStringsLen[i];  // up to CDF
+	}
+	tstrl += 60; 	// add space for Application string
+	DStrings[0] = (uint8_t*)AllocRamD2(tstrl);
+	for (i = 0; i < 6-1; i++) DStrings[i+1] = DStrings[i] + DStringsLen[i];
+	DStrings[6] = CdfString;
+	for (i = 0; i < 6; i++) {
+		if (DStringsLen[i] == 1) *DStrings[i] = 0; else memcpy(DStrings[i], strs[i], DStringsLen[i]);
+	}
+	// Build MDMA links for GUIDS
+    uint32_t CTCR = 0x7000000A;        // Software request, TRGM Full Transfer, byte sizes, no burst, source/target increment 
 	uint32_t *d = (uint32_t*)&GuidUnit, *s = (uint32_t*)0x1FF1E800;
 	*d++ = 0x37484D20;	// MH7
 	*d++ = *s++; *d++ = *s++; *d++ = *s++; 

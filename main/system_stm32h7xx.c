@@ -130,30 +130,31 @@
   * @{
   */
 void RamInit(void) {
-    extern int32_t _sdata, _edata, _sidata;
+    extern int32_t _sdata, _edata, _sidata, _sbss, _ebss;
     int32_t *ram = (int32_t*)&_sdata, *last = (int32_t*)&_edata, *flash = (int32_t*)&_sidata;
     while (ram != last) *ram++ = *flash++;
-    extern int32_t _sramD1init, _eramD1init, _siramD1init;
-    ram = (int32_t*)&_sramD1init, last = (int32_t*)&_eramD1init, flash = (int32_t*)&_siramD1init;
-    while (ram != last) *ram++ = *flash++;
-    extern int32_t _sramD2init, _eramD2init, _siramD2init;
-    ram = (int32_t*)&_sramD2init, last = (int32_t*)&_eramD2init, flash = (int32_t*)&_siramD2init;
-    while (ram != last) *ram++ = *flash++;
-    extern int32_t _sramD3init, _eramD3init, _siramD3init;
-    ram = (int32_t*)&_sramD3init, last = (int32_t*)&_eramD3init, flash = (int32_t*)&_siramD3init;
-    while (ram != last) *ram++ = *flash++;
-    extern int32_t _sbss, _ebss;
     ram = &_sbss, last = &_ebss;
     while (ram != last) *ram++ = 0;
-    extern int32_t _sramD1zero, _eramD1zero;
+    extern int32_t _sramD1init, _eramD1init, _siramD1init, _sramD1zero, _eramD1zero,  _sramD1, _eramD1;
+    ram = (int32_t*)&_sramD1init, last = (int32_t*)&_eramD1init, flash = (int32_t*)&_siramD1init;
+    while (ram != last) *ram++ = *flash++;
     ram = &_sramD1zero, last = &_eramD1zero;
     while (ram != last) *ram++ = 0;
-    extern int32_t _sramD2zero, _eramD2zero;
-    ram = &_sramD2zero, last = &_eramD2zero;
-    while (ram != last) *ram++ = 0;
-    extern int32_t _sramD3zero, _eramD3zero;
-    ram = &_sramD3zero, last = &_eramD3zero;
-    while (ram != last) *ram++ = 0;
+    extern int32_t _sramD2init, _eramD2init, _siramD2init, _sramD2zero, _eramD2zero, _sramD2, _eramD2;
+    if ((&_sramD2init != &_eramD2init) || (&_sramD2zero != &_eramD2zero) || (&_sramD2 != &_eramD2)) {
+        RCC->AHB2ENR |= 0x60000000;		// Enable D2 SRAM
+        ram = (int32_t*)&_sramD2init, last = (int32_t*)&_eramD2init, flash = (int32_t*)&_siramD2init;
+        while (ram != last) *ram++ = *flash++;
+        ram = &_sramD2zero, last = &_eramD2zero;
+        while (ram != last) *ram++ = 0;
+    }
+    extern int32_t _sramD3init, _eramD3init, _siramD3init, _sramD3zero, _eramD3zero, _sramD3, _eramD3;
+    if ((&_sramD3init != &_eramD3init) || (&_sramD3zero != &_eramD3zero) || (&_sramD3 != &_eramD3)) {
+        ram = (int32_t*)&_sramD3init, last = (int32_t*)&_eramD3init, flash = (int32_t*)&_siramD3init;
+        while (ram != last) *ram++ = *flash++;
+        ram = &_sramD3zero, last = &_eramD3zero;
+        while (ram != last) *ram++ = 0;
+    }
 }
 
 /**
