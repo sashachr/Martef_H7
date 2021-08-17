@@ -11,6 +11,7 @@
 #include "triggerscope.h"
 #include "siggen.h"
 #include "encoder.h"
+#include "motion.h"
 #include "servo.h"
 #include "io.h"
 #include "pins.h"
@@ -31,7 +32,8 @@ void MartefInit() {
     CommandInit();
     Io.Init();
     Encoder.Init();
-    for (int i = 0; i < NAX; i++) Servo[i].Init();
+    MotionInit();
+    ServoInit();
     Adc.Init();
     Scope.Init();
 	ThreadsInit();
@@ -63,7 +65,7 @@ void MartefTick() {
     GPIOF->BSRR = 0x00004000;           // Set TP2
 //    Adc.Tick();
     if (!Timer.initialDelayCounter) {
-        for (int i = 0; i < NAX; i++) Servo[i].Tick();
+        ServoTick();
 //        Dac.Tick();
 //        LedStatus.Tick();
         for (int i = 0; i < 2; i++) Signals[i].Tick();

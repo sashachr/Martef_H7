@@ -3,13 +3,16 @@
 // COPYRIGHT 2012 Sasha Chrichov
 
 #include "chip.h"
-#include "math.h"
+#include <math.h>
+#include <new>
 
-#include "Global.h"
-#include "Adc.h"
-#include "Pwm.h"
-#include "Io.h"
-#include "Servo.h"
+#include "global.h"
+#include "adc.h"
+#include "pwm.h"
+#include "io.h"
+#include "siggen.h"
+#include "motion.h"
+#include "servo.h"
 
 ServoStruct Servo[NAX];
 
@@ -21,7 +24,9 @@ ServoStruct::ServoStruct() {
     Mode = 0;
 }  	
 
-void ServoStruct::Init() {
+void ServoStruct::Init(uint8_t index) {
+    Index = index;
+    Motion = NewMotion(index);
 	Pwm.Init();
 //	Pwm.SetFrequency(80000);
     float bq[] = {100.0F, 0.7F};    // Bandwidth 700 Hz, Damping 0.7
@@ -61,18 +66,10 @@ void ServoStruct::SetError(uint16_t error) {
 
 void ServoStruct::Tick() {
     if (InitialCounter) InitialCounter--;
-    if (Motor == 0) IdentifyMotor();    
     Io.UpdateInputs();
     uint32_t iochange = io ^ Io.Io;
 	if (iochange) {
-		io = Io.Io;
-		if (iochange & IO_ENABLE) Mode = (Io.Io & IO_ENABLE) ? Mode | SM_ENABLE : Mode & ~SM_ENABLE;
-		if (iochange & IO_LINEAR) Mode = (Io.Io & IO_LINEAR) ? Mode | SM_LINEAR : Mode & ~SM_LINEAR;
-		if (iochange & IO_UHR) Mode = (Io.Io & IO_UHR) ? Mode | SM_UHR : Mode & ~SM_UHR;
-		if (iochange & IO_DC) Mode = (Io.Io & IO_DC) ? Mode | SM_DC : Mode & ~SM_DC;
-//		if (iochange & IO_SETOFFSET) SetOffset = (Io.Io & IO_SETOFFSET) != 0;
 	}
-    InTransition = Pwm.InTransition();
     SafetyRaw = SafetyBits();
     Safety = SafetyRaw & ~SafetyMask;
     if (Safety) {
@@ -106,7 +103,14 @@ void ServoStruct::Tick() {
 		Pwm.Mode = LinearMode();
         if (Enabled()) SetMinMax();
 	}
-//	InputAdc.Tick();
+    if (TPosSource) TPos = *TPosSource;
+    if (tpos != TPos) {
+        tpos = TPos;
+        Motion->Vel = Vel; Motion->Acc = Acc; Motion->Dec = Dec; Motion->Jerk = Jerk;
+		new(Motion) TrapezoidalMotion(tpos, 0);
+    }
+    Motion->Tick();
+    RPos = Motion->RPos; RVel = Motion->RVel; RAcc = Motion->RAcc; RJerk = Motion->RJerk;
     Encoder.Tick();
     FPos = Encoder.FPos; FVel = Encoder.FVel; FFVel = Encoder.FFVel; FAcc = Encoder.FAcc;
 //    if (Mode & SM_ANALOGINPUT) Srvtp[0] = InputAdc.Percent;    
@@ -183,36 +187,19 @@ MotorIdStruct Motors[] = {     //        max[v]	min[v]
     {32, 89.09, 98.79},        // HR/SE32 3.26	2.94
 };
 
-// uint8_t const* HrMotors[] = {"HR1", "HR2", "HR4", "HR6", "HR8", "HR12", "HR16", "HR32"};
-// uint8_t const* SeMotors[] = {"SE1", "SE2", "SE4", "SE6", "SE8", "SE12", "SE16", "SE32"};
-
-uint8_t ServoStruct::IdentifyMotor() {
-    float id = Adc.Ain[1];
-    uint8_t i;
-    for (i=0; i<8; i++) {
-        if ((id > Motors[i].VIdMin) & (id < Motors[i].VIdMax)) break;
-    }
-    if (i == 8) return 0;
-    uint8_t m = Motors[i].nElements;
-    if ((GPIOC->IDR & 0x0002) == 0) m += 100;            // SE motor
-    if (m != Motor) {
-        if (Motor != 0) return 0;
-        Motor = m; Pwm.SetMotor(m);
-        // MotorString = (m < 100) ? HrMotors[i] : SeMotors[i]; 
-        // 24V current monitoring
-        if (Motors[i].nElements < 8) {   // Temporary, until new data is available
-            Adc.SetMaxCurrent24V(1.1f*6.0f/24*Motors[i].nElements);
-        } else {
-            Adc.SetMaxCurrent24V(4.95);
-        }
-    }
-    return m;
-}
-
 int32_t ServoStruct::WriteDout(float out) {
     Out = out;
     Mode |= 0x10000061;     // Enable, disable motion/position/velocity
     return 1;
+}
+float* GetSignalSource(uint8_t ind) {
+    return (ind == 10) ? &Signals[0].Sgn : (ind == 11) ? &Signals[1].Sgn : 0;
+}
+void ServoTick() {
+    for (int i = 0; i < NAX; i++) Servo[i].Tick();
+}
+void ServoInit() {
+    for (int i = 0; i < NAX; i++) Servo[i].Init(i);
 }
 
 

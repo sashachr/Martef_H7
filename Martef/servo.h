@@ -100,8 +100,8 @@ public:
 	uint8_t DcMode() {return (Mode & SM_DC) != 0;}
 	// uint8_t SetOffset;
     uint8_t InTransition;
-    // uint8_t Fault;
-
+    uint8_t InMotion;
+    uint8_t Index;
     // uint8_t ServoVelMode;
     // uint8_t ServoPosMode;
     // uint8_t DisableDin;
@@ -124,12 +124,21 @@ public:
     uint32_t Safety;
     uint32_t SafetyRaw;
     uint32_t SafetyMask;
-
+    
+    uint8_t TPosRout;
+    uint8_t TVelRout;
+    uint8_t RPosRout;
+    uint8_t RVelRout;
+    float* TPosSource;
+    float* TVelSource;
+    float* RPosSource;
+    float* RVelSource;
 
     int cntrI;
     float In, Out, Cntr[20];
     float InScale;
     float NormalOffset, LinearOffset, DcOffset;
+    float Vel, Acc, Dec, KDec, Jerk;
     float TPos, TVel;
     float RPos, RVel, RAcc, RJerk, RCur;
     float FPos, FVel, FFVel, FAcc, FJerk, FCur, FCur1;
@@ -145,12 +154,13 @@ public:
     uint32_t InitialCounter;
 
 //    EncoderStruct* Encoder;
+   	MotionBase* Motion;
     PositionLoopStruct Ploop;
     VelocityLoopStruct Vloop;
 
 	ServoStruct();
 
-    void Init();
+    void Init(uint8_t index);
     void Tick();
 
     uint32_t SafetyBits();
@@ -189,6 +199,12 @@ private:
     uint32_t mode;
     uint16_t uhrPeriod;
     uint16_t uhrCounter;
+    float tpos, tvel;
 };
 
 extern ServoStruct Servo[];
+
+float* GetSignalSource(uint8_t ind);
+
+void ServoTick();
+void ServoInit();

@@ -6,7 +6,7 @@
 
 #include <stdint.h>
 
-#include "Global.h"
+#include "global.h"
 
 uint16_t HardId;
 uint16_t Initialization;
