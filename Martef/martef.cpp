@@ -44,10 +44,12 @@ void MartefInit() {
 uint32_t Leds = 0x00000008;
 
 void MartefTick() {
+    GPIOF->BSRR = 0x00000040;           // Set SPI5_NSS
     GPIOF->BSRR = 0x40008000;           // Set TP1, reset TP2
     Timer.Late = (Timer.Period - SysTick->VAL) * Timer.percentFactor;
     if (Timer.XLate < Timer.Late) Timer.XLate = Timer.Late;
     Timer.Tick++;
+    GPIOF->BSRR = 0x00400000;           // Reset SPI5_NSS
 	if (++Timer.millisecondTick == (int)TICKS_IN_MILLISECOND) {
 		Timer.millisecondTick = 0;
         Timer.Milliseconds++;
