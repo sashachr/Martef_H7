@@ -18,6 +18,8 @@ typedef uint8_t  byte;
 #define SYSCLK_RATE				550000000L		// 550 MHz
 #define APB1_RATE   			137500000L   	// 137.5 MHz
 #define APB2_RATE   			137500000L   	// 137.5 MHz
+#define APB4_RATE   			137500000L   	// 137.5 MHz
+#define APB4_RATE   			137500000L   	// 275 MHz
 
 #ifdef SERVO_20KHZ
   #define TICKS_IN_SECOND		20000.0F

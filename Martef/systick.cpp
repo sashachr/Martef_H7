@@ -2,11 +2,12 @@
 
 #include "global.h"
 #include "thread.h"
+#include "time.h"
 #include "martef.h"
 #include "systick.h"
 
 uint32_t SysTickInit() {
-	if (SysTick_Config(Timer.Period)) {
+	if (SysTick_Config(Time.Period)) {
 		return 1;
 	}
 	return 0;
