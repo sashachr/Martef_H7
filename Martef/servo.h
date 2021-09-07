@@ -92,6 +92,8 @@ public:
 #define SM_ANALOGINPUT      0x01000000  
 #define SM_NOMOTION         0x10000000
 
+class MotionBase;
+
 class ServoStruct {
 public:
 	uint8_t Enabled() {return (uint8_t)(Mode & SM_ENABLE);}
@@ -135,6 +137,7 @@ public:
     float* RVelSource;
 
     int cntrI;
+    uint32_t State, PmcuState;
     float In, Out, Cntr[20];
     float InScale;
     float NormalOffset, LinearOffset, DcOffset;

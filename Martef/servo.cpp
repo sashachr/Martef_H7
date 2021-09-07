@@ -112,7 +112,7 @@ void ServoStruct::Tick() {
     Motion->Tick();
     RPos = Motion->RPos; RVel = Motion->RVel; RAcc = Motion->RAcc; RJerk = Motion->RJerk;
     Encoder.Tick();
-    FPos = Encoder.FPos; FVel = Encoder.FVel; FFVel = Encoder.FFVel; FAcc = Encoder.FAcc;
+//    FPos = Encoder.FPos; FVel = Encoder.FVel; FFVel = Encoder.FFVel; FAcc = Encoder.FAcc;
 //    if (Mode & SM_ANALOGINPUT) Srvtp[0] = InputAdc.Percent;    
 	if (Enabled() && !InTransition) {
         if (Mode & SM_NOMOTION) {

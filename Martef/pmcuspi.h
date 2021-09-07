@@ -46,6 +46,8 @@ class Spi {
     public: static void Start(SPI_TypeDef* spi) { uint32_t c = spi->CR1; spi->CR1 |= c | 1; spi->CR1 |= c | 0x00000201;}
 };
 
+class ServoStruct;
+
 class PmcuSpi {
     SPI_TypeDef* spi;
     DMA_TypeDef* dma;
@@ -53,10 +55,14 @@ class PmcuSpi {
     volatile uint32_t *rxFlags, *txFlags;
     uint32_t rxCompleteFlag, rxFlagMask, txCompleteFlag, txFlagMask;
     uint32_t *inBuf[2], *outBuf[2];
-    public: void Init(uint8_t ispi, uint8_t idma);
+    public: ServoStruct* servo;
+    public: void Init(uint8_t index, uint8_t ispi, uint8_t idma);
     public: uint8_t IsReadComplete() { return (*rxFlags & rxCompleteFlag) != 0; }
     public: uint8_t IsWriteComplete() { return (*txFlags & txCompleteFlag) != 0; }
-    public: void Tick();
+    public: void TickStart();
+    public: void TickEnd();
+    public: void DecipherReport(uint32_t* buf);
+    public: void EncipherCommand(uint32_t* buf);
     public: void EnableDma() { rxStream->CR |= 1; txStream->CR |= 1; }
 };
 
