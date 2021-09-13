@@ -53,12 +53,12 @@ void PmcuSpi::TickEnd() {
 }
 
 void PmcuSpi::DecipherReport(uint32_t* buf) {
-    servo->PmcuState = buf[0];
+    servo->FState = buf[0];
     servo->FPos = *(float*)(buf+1);
 }
 
 void PmcuSpi::EncipherCommand(uint32_t* buf) {
-    buf[0] = servo->State;
+    buf[0] = servo->RState;
     *(float*)(buf+1) = servo->RPos;
     *(float*)(buf+2) = servo->RVel;
 }

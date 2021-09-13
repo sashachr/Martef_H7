@@ -110,12 +110,14 @@ void ServoStruct::Tick() {
 		new(Motion) TrapezoidalMotion(tpos, 0);
     }
     Motion->Tick();
-    RPos = Motion->RPos; RVel = Motion->RVel; RAcc = Motion->RAcc; RJerk = Motion->RJerk;
+    if (Mode & SM_MOTION) {
+        RPos = Motion->RPos; RVel = Motion->RVel; RAcc = Motion->RAcc; RJerk = Motion->RJerk;
+    }
     Encoder.Tick();
 //    FPos = Encoder.FPos; FVel = Encoder.FVel; FFVel = Encoder.FFVel; FAcc = Encoder.FAcc;
 //    if (Mode & SM_ANALOGINPUT) Srvtp[0] = InputAdc.Percent;    
 	if (Enabled() && !InTransition) {
-        if (Mode & SM_NOMOTION) {
+        if (Mode & SM_MOTION) {
             PIn = In;
         } else {
             PIn = RPos;

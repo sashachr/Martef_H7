@@ -2,8 +2,9 @@
 const int NAX=6;
 const int SCOPEDEPTH=1000;
 const float PERIOD=0.05;
-int attr(UINT32,READONLY,PROPREAD) __status[4] @1;
-int attr(UINT32,READONLY,PROPREAD) __astatus[NAX] @2;
+int attr(UINT32,READONLY,PROPREAD) STATE[4] @1;
+int attr(UINT32,READONLY) ASTATE[NAX] @2;
+int attr(UINT32) RSTATE[NAX] @3;
 int attr(UINT32,PROPREAD,PROPWRITE) _scope[32064] @40;
 float attr(FLASH) VEL[NAX] @101;
 float attr(FLASH) ACC[NAX] @102;

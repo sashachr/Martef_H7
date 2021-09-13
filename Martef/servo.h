@@ -90,7 +90,7 @@ public:
 #define SM_LINEAR           0x00010000
 #define SM_UHR              0x00020000
 #define SM_ANALOGINPUT      0x01000000  
-#define SM_NOMOTION         0x10000000
+#define SM_MOTION           0x10000000
 
 class MotionBase;
 
@@ -137,7 +137,7 @@ public:
     float* RVelSource;
 
     int cntrI;
-    uint32_t State, PmcuState;
+    uint32_t RState, FState;
     float In, Out, Cntr[20];
     float InScale;
     float NormalOffset, LinearOffset, DcOffset;
