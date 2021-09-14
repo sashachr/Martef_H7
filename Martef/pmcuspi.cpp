@@ -58,9 +58,21 @@ void PmcuSpi::DecipherReport(uint32_t* buf) {
 }
 
 void PmcuSpi::EncipherCommand(uint32_t* buf) {
-    buf[0] = servo->RState;
-    *(float*)(buf+1) = servo->RPos;
-    *(float*)(buf+2) = servo->RVel;
+    uint32_t stat = servo->RState;
+    buf[0] = stat;
+    if (stat & SM_POSITIONLOOP) {
+    	*(float*)(buf+1) = servo->RPos;
+        *(float*)(buf+2) = servo->RVel;
+    } else if (stat & SM_VELOCITYLOOP) {
+    	*(float*)(buf+1) = servo->VIn;
+        *(float*)(buf+2) = 0;
+    } else if (stat & SM_CURRENTLOOP) {
+    	*(float*)(buf+1) = servo->CIn;
+        *(float*)(buf+2) = servo->Teta;
+    } else if (stat & SM_PWM) {
+    	*(float*)(buf+1) = servo->Cq; 
+        *(float*)(buf+2) = servo->Teta;
+    }
 }
 
 void PmcuSpiTickStart() {

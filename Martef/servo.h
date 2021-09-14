@@ -82,24 +82,20 @@ public:
 
 // Servo modes
 #define SM_ENABLE           0x00000001
-#define SM_DC               0x00000004
-#define SM_NOPHASER         0x00000008
-#define SM_NOCURRENTLOOP    0x00000010  
-#define SM_NOVELOCITYLOOP   0x00000020  
-#define SM_NOPOSITIONLOOP   0x00000040 
-#define SM_LINEAR           0x00010000
-#define SM_UHR              0x00020000
-#define SM_ANALOGINPUT      0x01000000  
-#define SM_MOTION           0x10000000
+#define SM_PWM              0x00000002
+#define SM_COMMUTATION      0x00000008
+#define SM_VECTORCONTROL    0x00000010
+#define SM_POSITIONLOOP     0x00000020  
+#define SM_VELOCITYLOOP     0x00000040 
+#define SM_CURRENTLOOP      0x00000080  
+#define SM_SIMULATION       0x10000000
+#define SM_HOME             0x40000000
+#define SM_MOTION           0x80000000
 
 class MotionBase;
 
 class ServoStruct {
 public:
-	uint8_t Enabled() {return (uint8_t)(Mode & SM_ENABLE);}
-	uint8_t LinearMode() {return (Mode & SM_LINEAR) != 0;}
-	uint8_t UhrMode() {return (Mode & SM_UHR) != 0;}
-	uint8_t DcMode() {return (Mode & SM_DC) != 0;}
 	// uint8_t SetOffset;
     uint8_t InTransition;
     uint8_t InMotion;
@@ -108,19 +104,15 @@ public:
     // uint8_t ServoPosMode;
     // uint8_t DisableDin;
 
-    uint32_t Mode;
+    uint32_t RState, FState;
     // Bits:    
     // 0 - Enable
-    // 1 - Enable PWM        
-    // 2 - Enable DC
-    // 3 - Enable Phaser (ignored)
-    // 4 - Enable Current Loop (ignored)
-    // 5 - No Velocity Loop
-    // 6 - No Position Loop
-    // 16 - 0 - Normal mode, 1 - Linear mode
-    // 17 - Enable UHR
-    // 24 - Enable Analog Input
-    // 28 - No Motion Generation        
+    // 3 - Enable Phaser 
+    // 4 - Enable Current Loop 
+    // 5 - Enable Velocity Loop
+    // 6 - Enable Position Loop
+    // 28 - Simulation
+    // 31 - In Motion        
 
     uint16_t Error;
     uint32_t Safety;
@@ -137,7 +129,6 @@ public:
     float* RVelSource;
 
     int cntrI;
-    uint32_t RState, FState;
     float In, Out, Cntr[20];
     float InScale;
     float NormalOffset, LinearOffset, DcOffset;
@@ -146,10 +137,12 @@ public:
     float RPos, RVel, RAcc, RJerk, RCur;
     float FPos, FVel, FFVel, FAcc, FJerk, FCur, FCur1;
     float Pe, Ve;
-    float PIn, VIn, POut, VOut;
+    float PIn, VIn, CIn, POut, VOut;
+    float Cq, Cd;
     float PeLimit;
-    float DOffs, DOL;
-    float OTL;
+    float Teta;
+    // float DOffs, DOL;
+    // float OTL;
 	
 	float Srvtp[10];
     float OutMin, OutMax;
@@ -160,8 +153,6 @@ public:
    	MotionBase* Motion;
     PositionLoopStruct Ploop;
     VelocityLoopStruct Vloop;
-
-	ServoStruct();
 
     void Init(uint8_t index);
     void Tick();
@@ -188,7 +179,11 @@ public:
     void SetError(uint16_t error);
     void SetMinMax();
     void Enable(uint8_t en);
-    int32_t WriteDout(float dout);
+    int32_t SetPos(float pos) { RPos = pos; RState = (RState & ~(SM_MOTION)) | (SM_POSITIONLOOP|SM_VELOCITYLOOP|SM_CURRENTLOOP|SM_PWM|SM_ENABLE); return 1;}
+    int32_t SetVel(float vel) { VIn = vel; RState = (RState & ~(SM_MOTION|SM_POSITIONLOOP)) | (SM_VELOCITYLOOP|SM_CURRENTLOOP|SM_PWM|SM_ENABLE); return 1;}
+    int32_t SetCur(float cur) { CIn = cur; RState = (RState & ~(SM_MOTION|SM_POSITIONLOOP|SM_VELOCITYLOOP)) | (SM_CURRENTLOOP|SM_PWM|SM_ENABLE); return 1;}
+    int32_t SetCurQ(float cur) { Cq = cur; Cd = 0; RState = (RState & ~(SM_MOTION|SM_POSITIONLOOP|SM_VELOCITYLOOP|SM_CURRENTLOOP)) | (SM_PWM|SM_ENABLE); return 1;}
+    int32_t SetTeta(float teta) { Teta = teta; RState = RState & ~SM_COMMUTATION; return 1;}
 private:
   	// Inputs
     uint32_t io;
@@ -211,3 +206,15 @@ float* GetSignalSource(uint8_t ind);
 
 void ServoTick();
 void ServoInit();
+
+#define ServoSetVar(func) \
+    [](uint16_t ind, uint16_t count, int32_t* buf) -> int32_t {  \
+        int16_t i = 0, j = ind; \
+        for (; (i < count) && (j < NAX); i++,j++) if (!IsNan(*buf)) Servo[j].func(*(float*)buf++); \
+        return i; \
+    }
+#define ServoSetPos  ServoSetVar(SetPos)
+#define ServoSetVel  ServoSetVar(SetVel)
+#define ServoSetCur  ServoSetVar(SetCur)
+#define ServoSetCurQ  ServoSetVar(SetCurQ)
+#define ServoSetTeta  ServoSetVar(SetTeta)

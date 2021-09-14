@@ -1,8 +1,7 @@
-        // Copyright (c) Sasha (Alexander) Chrichoff. All rights reserved.
-        // Under no circumstances may you delete or modify this file header.
-        // See LICENSE.TXT file in the project root for full license information.  
-        //
-
+// Copyright (c) Sasha (Alexander) Chrichoff. All rights reserved.
+// Under no circumstances may you delete or modify this file header.
+// See LICENSE.TXT file in the project root for full license information.  
+//
 #include "chip.h"
 #include <string.h>
 
