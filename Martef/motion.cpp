@@ -8,20 +8,19 @@
 #include <math.h>
 #include <new>
 
-#include "Global.h"     // DSP280x Headerfile Include File
-#include "Motion.h"
-//#include "MultiStep.h"
-#include "Servo.h"
+#include "global.h"     // DSP280x Headerfile Include File
+#include "encoder.h"
+#include "servo.h"
+#include "motion.h"
 
 // Additional mathematics
-#define PI	3.14159265358
 float atan2f(float x, float y) {
 	if (fabsf(y) <= fabsf(x)) {
 		float a = atanf(y / x);
-		return (x > 0)? a : (y > 0)? a + PI : a - PI;
+		return (x > 0)? a : (y > 0)? a + F_PI : a - F_PI;
 	} else {
 		float b = -atanf(x / y);
-		return (y > 0)? b + (PI * 0.5) : b - (PI * 0.5);
+		return (y > 0)? b + (F_PI * 0.5) : b - (F_PI * 0.5);
 	}
 }
 	
@@ -407,7 +406,7 @@ void StartLine2Motion(float t0, float t1) {
 	new(&Motions[1]) MotionBase();
 	new(&Motions[0]) Line2Motion(t0, t1);
 	Servo[0].TPos = t0; Servo[1].TPos = t1;
-	Servo[0].InMotion = 1; Servo[1].InMotion = 1;
+	Servo[0].SetMotionState(1); Servo[1].SetMotionState(1);
 }
 
 Arc2Motion::Arc2Motion(float t0, float t1, float ce0, float ce1, int d) : MotionBase(M_ARC2) {
@@ -418,7 +417,7 @@ Arc2Motion::Arc2Motion(float t0, float t1, float ce0, float ce1, int d) : Motion
 	float sv0 = s0 - c0, sv1 = s1 - c1, fv0 = f0 - c0, fv1 = f1 - c1;
 	sa = atan2f(sv0, sv1); fa = atan2f(fv0, fv1);
 	float a = fa - sa;
-	if ((a != 0) && ((a > 0) != (dir > 0))) a += (a > 0)? -(2 * PI) : (2 * PI);
+	if ((a != 0) && ((a > 0) != (dir > 0))) a += (a > 0)? -(2 * F_PI) : (2 * F_PI);
 	sr = sqrtf(sv0 * sv0 + sv1 * sv1); fr = sqrtf(fv0 * fv0 + fv1 * fv1); r = (sr + fr) * 0.5;
 	L = fabsf(r * a); ka = a / L; kr = (fr - sr) / L;
 	new(&m) TrapezoidalMotion(L);
@@ -453,7 +452,7 @@ void StartArc2Motion(float t0, float t1, float c0, float c1, int d) {
 	new(&Motions[1]) MotionBase();
 	new(&Motions[0]) Arc2Motion(t0, t1, c0, c1, d);
 	Servo[0].TPos = t0; Servo[1].TPos = t1;
-	Servo[0].InMotion = 1; Servo[1].InMotion = 1;
+	Servo[0].SetMotionState(1); Servo[1].SetMotionState(1);
 }
 
 void MotionInit() {

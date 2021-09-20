@@ -7,7 +7,7 @@
 #include "thread.h"
 #include "pins.h"
 #include "martef.h"
-#include "time.h"
+#include "timer.h"
 
 TimeStruct Time;
 

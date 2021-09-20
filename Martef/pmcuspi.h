@@ -55,6 +55,7 @@ class PmcuSpi {
     volatile uint32_t *rxFlags, *txFlags;
     uint32_t rxCompleteFlag, rxFlagMask, txCompleteFlag, txFlagMask;
     uint32_t *inBuf[2], *outBuf[2];
+    uint32_t iTick, iBuf;
     public: ServoStruct* servo;
     public: void Init(uint8_t index, uint8_t ispi, uint8_t idma);
     public: uint8_t IsReadComplete() { return (*rxFlags & rxCompleteFlag) != 0; }

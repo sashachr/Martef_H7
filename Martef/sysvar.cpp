@@ -7,9 +7,10 @@
 
 #include "global.h"
 #include "motion.h"
+#include "encoder.h"
 #include "servo.h"
 #include "io.h"
-#include "pwm.h"
+#include "timer.h"
 #include "adc.h"
 //#include "Dac.h"
 //#include "Flash.h"
@@ -133,6 +134,14 @@ int32_t FlashSave(uint16_t ind, int16_t count, uint32_t* buf) {
     return 1;
 }
 
+#define StructScalarDirectRead(struc, var) \
+    [](uint16_t i)->int32_t* {return (int32_t*)&struc.var;}, \
+    [](uint16_t ind, uint16_t count, int32_t* buf) -> int32_t {  \
+        int16_t i = 0, j = ind; \
+        for (; (i < count) && (j < 1); i++,j++) *buf++ = *(int32_t*)&struc.var; \
+        for (; i < count; i++) *buf++ = NONE; \
+        return i; \
+    }
 #define StructDirectRead(struc, var, maxind) \
     [](uint16_t i)->int32_t* {return (int32_t*)&struc[i].var;}, \
     [](uint16_t ind, uint16_t count, int32_t* buf) -> int32_t {  \

@@ -18,7 +18,7 @@
 #include "pins.h"
 #include "systick.h"
 #include "command.h"
-#include "time.h"
+#include "timer.h"
 #include "martef.h"
 
 void MartefInit() {

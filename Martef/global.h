@@ -38,6 +38,8 @@ typedef uint8_t  byte;
 #define N_AIN	16
 #define N_AOUT	2
 
+#define F_PI  3.1415926535F
+
 //#define TIMER_DIVIDER	((int)(CPU_CLOCK/TICKS_IN_SECOND+0.5))
 //#define TIMER_FACTOR	(100.F/(float)TIMER_DIVIDER)
 #define RS232_COMMAND_POLL	((int)(0.1*TICKS_IN_MILLISECOND+0.5))		// Poll RS232 command

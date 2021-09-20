@@ -17,7 +17,7 @@ public:
     uint8_t Type;
     float Period, Duty, Min, Max;
     float Sgn;
-    SignalStruct(): Type(0), Min(-100), Max(100), Duty(0.5F) { SetPeriod(0.01F); }
+    SignalStruct(): Type(0), Duty(0.5F), Min(-100), Max(100) { SetPeriod(0.01F); }
     void Tick();
     void Reset() {count = 0; down = 0; }
     void SetPeriod(float p) {

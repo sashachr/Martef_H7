@@ -4,9 +4,7 @@
 
 #pragma once
 
-#include <math.h>
-#include "Filters.h"
-#include "Encoder.h"
+#include "filters.h"
 
 #define N_BIQUADS	4
 
@@ -25,20 +23,21 @@
 #define SB_TEMP         0x01000000
 #define SB_05REF        0x02000000
 
-// Analog inputs
-//   0      User_Analog_In	PC4	ADC12_IN14
-//   1      ID_OUT	PA2	ADC123_IN2
-//   2      OV1	PA3	ADC123_IN3
-//   3      24V_CHECK	PA5	ADC12_IN5
-//   4      3V3_CHECK	PA6	ADC12_IN6
-//   5      5V_CHECK	PA7	ADC12_IN7
-//   6      12V_CHECK	PC5	ADC12_IN15
-//   7	    24VCM	PC2	ADC123_IN12
-//   8      24VDC_CM	PC3	ADC123_IN13
-//   9      ADC_AIN_backup	PB0	ADC12_IN8
-//   10     Temperature sensor  ADC1_IN16
-//   11     ADC_0.5_VREF	PB1	ADC12_IN9
-
+class PositionLoopStruct : public FilterStruct {
+public:
+    PiStruct Pi;
+    PositionLoopStruct() {}
+    void Tick() {
+        if (Enable) {
+            Pi.In = In;
+            Pi.Tick();
+            Out = Pi.Out;
+        }
+    }
+    void Reset() {
+        Pi.Reset();
+    }
+};
 class VelocityLoopStruct : public FilterStruct {
 public:
     float Vltp[4];
@@ -64,23 +63,26 @@ public:
     }
     void Set(float v) { Pi.Set(v); }
 };
-class PositionLoopStruct : public FilterStruct {
+class CurrentLoopStruct : public FilterStruct {
 public:
+    float Cltp[2];
+    BiQuadStruct Bq[N_BIQUADS];
     PiStruct Pi;
-    PositionLoopStruct() {}
     void Tick() {
         if (Enable) {
-            Pi.In = In;
+            Cltp[0] = Pi.In = In;
             Pi.Tick();
-            Out = Pi.Out;
+            Cltp[1] = Out = Pi.Out;
         }
     }
     void Reset() {
+        Cltp[0] = Cltp[1] = Pi.In = In;
         Pi.Reset();
     }
+    void Set(float v) { Pi.Set(v); }
 };
 
-// Servo modes
+// Servo state bits
 #define SM_ENABLE           0x00000001
 #define SM_PWM              0x00000002
 #define SM_COMMUTATION      0x00000008
@@ -88,6 +90,8 @@ public:
 #define SM_POSITIONLOOP     0x00000020  
 #define SM_VELOCITYLOOP     0x00000040 
 #define SM_CURRENTLOOP      0x00000080  
+#define SM_INDEX            0x01000000
+#define SM_INDEX1           0x02000000
 #define SM_SIMULATION       0x10000000
 #define SM_HOME             0x40000000
 #define SM_MOTION           0x80000000
@@ -96,108 +100,75 @@ class MotionBase;
 
 class ServoStruct {
 public:
-	// uint8_t SetOffset;
-    uint8_t InTransition;
-    uint8_t InMotion;
     uint8_t Index;
-    // uint8_t ServoVelMode;
-    // uint8_t ServoPosMode;
-    // uint8_t DisableDin;
-
+    uint8_t InTransition;
     uint32_t RState, FState;
     // Bits:    
     // 0 - Enable
-    // 3 - Enable Phaser 
-    // 4 - Enable Current Loop 
-    // 5 - Enable Velocity Loop
-    // 6 - Enable Position Loop
+    // 1 - Enable PWM        
+    // 2 - Enable DC (ignored)
+    // 3 - Enable Phaser
+    // 4 - Enable Vector Control
+    // 5 - Enable Position Loop
+    // 6 - Enable Velocity Loop
+    // 7 - Enable Current Loop 
+    // 8 - Enable Analog Input (ignored)
+    // 16 - PWM mode (ignored)
+    // 17 - UHR (ignored)
     // 28 - Simulation
-    // 31 - In Motion        
+    // 31 - Motion Generation        
 
     uint16_t Error;
     uint32_t Safety;
     uint32_t SafetyRaw;
     uint32_t SafetyMask;
+
+    float Vel, Acc, Dec, KDec, Jerk;    // Motion parameters
+    float TPos, TVel;                   // Target values
+    float RPos, RVel, RAcc, RJerk;      // Reference values
+    float FPos, FPos1, FVel1, FAcc1;    // Feedback values
+    float IndPos, IndPos1;              // Index position of rotary and linear encoders
+    float Pe, Ve;                       // Position error, velocity error
+    float PIn, VIn, POut, VOut;         // Inputs/outputs of position/velocity loop
+    float CIn, CqOut, CdOut;            // Current Q loop input, current D/Q loop outputs 
+    float FCa, FCb, FCq, FCd;           // Current A/B feedback and transformed D/Q feedback
+    float OutA, OutB, OutC;             // PWM A/B/C phase values
+    float CurL, PwmL;                   // Current limit (applies to CIn), PWM limit (applies to PWM A/B/C)
+    float EncDiL;                       // Permitted discrepancy of encoder feedbacks
+    float PeL;                          // Permitted position error
+    float NsL, PsL;                     // Software limits
+    float OtL, MtL;                     // Maximal time of open-loop operation and single motion
+    float Teta;                         // Commutation angle
     
-    uint8_t TPosRout;
-    uint8_t TVelRout;
-    uint8_t RPosRout;
-    uint8_t RVelRout;
-    float* TPosSource;
-    float* TVelSource;
-    float* RPosSource;
-    float* RVelSource;
-
-    int cntrI;
-    float In, Out, Cntr[20];
-    float InScale;
-    float NormalOffset, LinearOffset, DcOffset;
-    float Vel, Acc, Dec, KDec, Jerk;
-    float TPos, TVel;
-    float RPos, RVel, RAcc, RJerk, RCur;
-    float FPos, FVel, FFVel, FAcc, FJerk, FCur, FCur1;
-    float Pe, Ve;
-    float PIn, VIn, CIn, POut, VOut;
-    float Cq, Cd;
-    float PeLimit;
-    float Teta;
-    // float DOffs, DOL;
-    // float OTL;
-	
-	float Srvtp[10];
-    float OutMin, OutMax;
-
+    uint8_t TPosRout, TVelRout, RPosRout, RVelRout;
+    float *TPosSource, *TVelSource, *RPosSource, *RVelSource;
+   
     uint32_t InitialCounter;
 
-//    EncoderStruct* Encoder;
-   	MotionBase* Motion;
+    MotionBase* Motion;
+    EncoderStruct REncoder, LEncoder;
     PositionLoopStruct Ploop;
     VelocityLoopStruct Vloop;
+    CurrentLoopStruct Cqloop, Cdloop;
+    CommutationPhaseStruct Commut;
+    VectorTransformStruct Direct, Feedback;
+//    PwmStruct Pwm;
 
-    void Init(uint8_t index);
+	void Init(uint8_t index);
     void Tick();
-
     uint32_t SafetyBits();
-
-    uint32_t UhrWrite(float v) {
-        if ((v < 0.0F) || (v > 100.0F)) return MRE_WRONGVALUE;
-        uhr = (uint16_t)(v*0.01*uhrPeriod + 0.5F);
-        return 0;
-    }
-    float UhrRead() {return (float)uhr/uhrPeriod*100;}
-    uint32_t UhrPeriodWrite(float v) {
-        if ((v < 0.0F) || (v > 100.0F)) return MRE_WRONGVALUE;   // 100 msec maximum
-        float u = UhrRead(); 
-        uhrPeriod = (uint16_t)(v*TICKS_IN_MILLISECOND + 0.5F);
-        UhrWrite(u);
-        uhrCounter = 0;
-        return 0;
-    }
-    float UhrPeriodRead() {return uhrPeriod*MILLISECONDS_IN_TICK;}
-    uint8_t IdentifyMotor();
     uint16_t GetError(uint32_t safety);
     void SetError(uint16_t error);
-    void SetMinMax();
     void Enable(uint8_t en);
+    void SetMotionState(uint8_t stat) { if (stat) RState |= SM_MOTION; else RState &= ~SM_MOTION; }
     int32_t SetPos(float pos) { RPos = pos; RState = (RState & ~(SM_MOTION)) | (SM_POSITIONLOOP|SM_VELOCITYLOOP|SM_CURRENTLOOP|SM_PWM|SM_ENABLE); return 1;}
     int32_t SetVel(float vel) { VIn = vel; RState = (RState & ~(SM_MOTION|SM_POSITIONLOOP)) | (SM_VELOCITYLOOP|SM_CURRENTLOOP|SM_PWM|SM_ENABLE); return 1;}
     int32_t SetCur(float cur) { CIn = cur; RState = (RState & ~(SM_MOTION|SM_POSITIONLOOP|SM_VELOCITYLOOP)) | (SM_CURRENTLOOP|SM_PWM|SM_ENABLE); return 1;}
-    int32_t SetCurQ(float cur) { Cq = cur; Cd = 0; RState = (RState & ~(SM_MOTION|SM_POSITIONLOOP|SM_VELOCITYLOOP|SM_CURRENTLOOP)) | (SM_PWM|SM_ENABLE); return 1;}
+    int32_t SetCurQ(float cur) { CqOut = cur; CdOut = 0; RState = (RState & ~(SM_MOTION|SM_POSITIONLOOP|SM_VELOCITYLOOP|SM_CURRENTLOOP)) | (SM_PWM|SM_ENABLE); return 1;}
     int32_t SetTeta(float teta) { Teta = teta; RState = RState & ~SM_COMMUTATION; return 1;}
+
 private:
-  	// Inputs
-    uint32_t io;
-	// Current mode
-	// uint8_t enabled;
-	// uint8_t linearMode;
-	// uint8_t dcMode;
-	// // State variables
-    // uint8_t uhrPulse;
-    uint16_t uhr;
-    uint32_t mode;
-    uint16_t uhrPeriod;
-    uint16_t uhrCounter;
-    float tpos, tvel;
+    float tpos;
 };
 
 extern ServoStruct Servo[];

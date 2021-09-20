@@ -1,48 +1,16 @@
 
 #pragma once
 
-#define PI  3.1415926535F
-
-// class PiStruct {
-// public:
-//     float In, Out;
-//     float Integral;
-//     float Kp, Ki, Li;      
-
-//     PiStruct() {Kp = 1; Ki = 0.3; Li = 100; Integral = 0;}
-
-//     uint32_t KiWrite(float v) {Ki = v; ki = v*SECONDS_IN_TICK; return 0;}
-//     uint32_t LiWrite(float v) {if ((v<0)||(v>100)) return MRE_WRONGVALUE; Li = v; return 0;}
-
-//     void Init() {Reset();}
-//     void Tick() {
-//         float P = In*Kp;
-//         float I = Ki? Integral+P*ki : 0;
-//         if (fabsf(I)>Li) I = (I>=0)? Li : -Li;
-//         Integral = I;
-//         Out = P + I;
-//     }
-//     void Reset(float Init) {Integral = Init;}
-//     void Reset() {Reset(0);}
-   
-// private:
-//     float ki;
-// };
-
-// Biquad modes
-#define BQ_RAW      0
-#define BQ_LPF      1
-#define BQ_NOTCH    2
-#define BQ_FULL     3
 
 class FilterStruct {
 public:
-    uint8_t Enable;
+    uint32_t Enable;
     float In, Out;
     virtual void Reset() {}
     virtual void Set(float v) {}
     virtual void Tick() {}
 };
+
 class PiStruct : public FilterStruct {
 public:
 	float Kp, Ki, Li;
@@ -67,9 +35,16 @@ public:
         KiPerTick = ki * SECONDS_IN_TICK;
     }
 };
+
+// Biquad modes
+#define BQ_RAW      0
+#define BQ_LPF      1
+#define BQ_NOTCH    2
+#define BQ_FULL     3
+
 class BiQuadStruct : public FilterStruct {
 public:
-    uint8_t Mode;
+    uint32_t Mode;
     float S1, S2;
     float A1, A2, B0, B1, B2;      
 
@@ -96,7 +71,7 @@ public:
             case BQ_LPF: {
                 float bandwidth = p[0];
                 float damping = p[1];
-                float om = 2*PI*bandwidth*SECONDS_IN_TICK;
+                float om = 2*F_PI*bandwidth*SECONDS_IN_TICK;
                 float a0 = 4 + 4*damping*om + om*om;
                 A1 = (-8 + 2*om*om)/a0;   
                 A2 = (4 - 4*damping*om + om*om)/a0;  
@@ -110,7 +85,7 @@ public:
                 float width = p[1];
                 float att = p[2];
                 float q = res / width;
-                float om = 2*PI*res*SECONDS_IN_TICK;
+                float om = 2*F_PI*res*SECONDS_IN_TICK;
                 float a0 = 4 + 2*att/q*om + om*om;
                 A1 = (-8 + 2*om*om)/a0;   
                 A2 = (4 - 2*att/q*om + om*om)/a0;
@@ -124,8 +99,8 @@ public:
                 float dp = p[1];
                 float fz = p[2];
                 float dz = p[3];
-                float omp = 2*PI*fp*SECONDS_IN_TICK;
-                float omz = 2*PI*fz*SECONDS_IN_TICK;
+                float omp = 2*F_PI*fp*SECONDS_IN_TICK;
+                float omz = 2*F_PI*fz*SECONDS_IN_TICK;
                 float k = (omp*omp)/(omz*omz);
                 float a0 = 4 + 4*dp*omp + omp*omp;
                 A1 = (-8 + 2*omp*omp)/a0;   
@@ -141,5 +116,44 @@ public:
     }
 };
 
-extern PiStruct PiPool[3];
-extern BiQuadStruct BqPool[4];
+class CommutationPhaseStruct : public FilterStruct {
+public:
+	int32_t Incr;
+	int32_t Period;
+	int32_t Count;
+	float CountToPhase;
+    float Sin, Cos;
+    void Tick() {
+        Count += Incr;
+        if (Count<0) Count += Period; else if (Count>=Period) Count -= Period;
+        if (Enable) Out = Count*CountToPhase;
+    }
+    void Set(float phase) {
+        Count = round(phase/CountToPhase);
+        Out = phase;
+        Enable = 1;
+    }
+    void SetPeriod(int32_t period) {
+        Period = period;
+        CountToPhase = 2*F_PI/period;
+        Count = 0;
+        Out = 0;
+    }
+};
+
+struct VectorTransformStruct {
+public:
+	float Ia, Ib, Ic;
+	float Ialpha, Ibeta;
+	float Id, Iq;
+	float Phase, Sin, Cos;
+    void Clark() { Ialpha = Ia; Ibeta = Ia*0.577350269F+Ib*1.154700538F; } 
+    void Park() { Id = Ialpha*Cos+Ibeta*Sin; Iq = -Ialpha*Sin+Ibeta*Cos; }
+    void iPark() { Ialpha = Id*Cos-Iq*Sin; Ibeta = Id*Sin+Iq*Cos; }
+    void iClark() { Ia = Ialpha; Ib = -Ialpha*0.5F+Ibeta*0.866025404F; Ic = -Ia-Ib; }
+    void Direct() { iPark(); iClark(); }
+    void Feedback() { Clark(); Park(); } 
+    void SetPhase(float phase) { } 
+};
+
+

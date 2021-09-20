@@ -43,4 +43,5 @@ int32_t SignalSetPeriod(uint16_t ind, uint16_t count, int32_t* buf) {
 	for (uint16_t i = 0; i < count; i++, ind++, buf++) {
 		if (ind < 2) Signals[ind].SetPeriod(*(float*)buf);
 	}
+	return 1;
 }
