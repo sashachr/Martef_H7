@@ -8,6 +8,8 @@ struct TimeStruct {
 	uint16_t inMillisecondCount, inSecondCount;
     uint16_t initialDelayCount;
     float Late, XLate, Use, XUse, percentFactor;
+	float GetTime() { return Tick * SECONDS_IN_TICK; }
+	void SetTime(float time) { Tick = (uint32_t)(time * TICKS_IN_SECOND); }
 };
 
 extern struct TimeStruct Time;

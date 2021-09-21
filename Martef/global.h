@@ -108,8 +108,8 @@ extern byte Program[MaxProgram];
 
 extern uint8_t ProductString[];
 extern uint8_t ManufacturerString[];
-extern const uint8_t GitVersion[];
-extern const uint8_t GitSha[];
+// extern const uint8_t GitVersion[];
+// extern const uint8_t GitSha[];
 extern uint8_t ApplicationString[];
 extern uint8_t const* MotorString;
 

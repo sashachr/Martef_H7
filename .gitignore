@@ -12,7 +12,10 @@
 
 # Built files
 build/
+Includes/
+Binaries/
 Debug/
+Release/
 
 # VSC and VS
 .vscode/
@@ -22,6 +25,5 @@ Debug/
 env/
 
 # Miscelanous
-AllDrivers/
 .hide/
-GitVersion.h
+gitversion.h

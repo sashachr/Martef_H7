@@ -131,11 +131,12 @@ void TrapezoidalMotion::Tick() {
 					RPos = P1;
 					RVel = RAcc = 0;
 					new(this) MotionBase();
+					phase = 0;
 					break;
 				}
 			}
 		}
-		} else {
+	} else {
 	}
 }
 

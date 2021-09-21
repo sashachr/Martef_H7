@@ -8,7 +8,7 @@
 #include "global.h"
 #include "sysvar.h"
 //#include "martel.h"
-//#include "cdf.h"
+#include "gitversion.h"
 #include "communication.h"
 #include "command.h"
 
@@ -338,7 +338,7 @@ void CommandInit() {
 		ProductString,
 		ManufacturerString,
 		0, // SerialNumberString, 
-		0, // FwVersionString,
+		GitVersion, // FwVersionString,
 		0,
 		0, // ApplicationString,
 		CdfString, // CDF,

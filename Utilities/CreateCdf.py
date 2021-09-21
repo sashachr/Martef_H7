@@ -5,7 +5,7 @@
 #import numpy as np
 #import scipy as sp
 import os
-#import json
+import sys
 
 def AddNumbersNames(inpc, inpt, outc):
     #os.chdir(os.path.dirname(os.path.realpath(__file__)))
@@ -105,8 +105,9 @@ def Sysvartable2Cdf(sysvartable, prefixfrom, cdftext, cdfcpp):
 #of = "C:\\Projects\\XactRobotics\\MartefH7\\MH7-fw\\Martef\\sysvartable1.inc"
 #AddNumbersNames(cf, tf, of)
 
-svf = "C:\\Projects\\XactRobotics\\MartefH7\\MH7-fw\\Martef\\sysvar.inc"
-pf = "C:\\Projects\\XactRobotics\\MartefH7\\MH7-sw\\Martefon\\ControllerDefinitions\\xact.cdf"                    
-cdf = "C:\\Projects\\XactRobotics\\MartefH7\\MH7-fw\\Martef\\xact.cdf"
-cdc = "C:\\Projects\\XactRobotics\\MartefH7\\MH7-fw\\Martef\\xact.cdc"
+svf = sys.argv[1] #"C:\\Projects\\XactRobotics\\MartefH7\\MH7-fw\\Martef\\sysvar.inc"
+pf = sys.argv[2] #"C:\\Projects\\XactRobotics\\MartefH7\\MH7-sw\\Martefon\\ControllerDefinitions\\xact.cdf"                    
+cdf = sys.argv[3] #"C:\\Projects\\XactRobotics\\MartefH7\\MH7-fw\\Martef\\xact.cdf"
+cdc = sys.argv[4] #"C:\\Projects\\XactRobotics\\MartefH7\\MH7-fw\\Martef\\xact.cdc"
 Sysvartable2Cdf(svf, pf, cdf, cdc)
+pass

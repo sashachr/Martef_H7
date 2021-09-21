@@ -56,11 +56,20 @@ void ServoStruct::Tick() {
         tpos = TPos;
         Motion->Vel = Vel; Motion->Acc = Acc; Motion->Dec = Dec; Motion->Jerk = Jerk;
 		new(Motion) TrapezoidalMotion(tpos, 0);
+        RState |= SM_ENABLE|SM_PWM|SM_CURRENTLOOP|SM_VELOCITYLOOP|SM_POSITIONLOOP|SM_MOTION;
+        OperationCounter = floor(MtL * TICKS_IN_SECOND);
     }
     Motion->Tick();
     if (RState & SM_MOTION) {
         RPos = Motion->RPos; RVel = Motion->RVel; RAcc = Motion->RAcc; RJerk = Motion->RJerk;
+        if (Motion->phase == 0) RState &= ~SM_MOTION;
+        if (--OperationCounter == 0) SetError(FLT_TIMEOUT);
+    } else {
+        if (OperationCounter) {
+            if (--OperationCounter == 0) RState &= ~SM_ENABLE;
+        }
     }
+
     // if (InitialCounter) InitialCounter--;
     // SafetyRaw = SafetyBits();
     // Safety = SafetyRaw & ~SafetyMask;

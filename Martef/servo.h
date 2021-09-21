@@ -122,6 +122,7 @@ public:
     uint32_t Safety;
     uint32_t SafetyRaw;
     uint32_t SafetyMask;
+    uint32_t OperationCounter;
 
     float Vel, Acc, Dec, KDec, Jerk;    // Motion parameters
     float TPos, TVel;                   // Target values
@@ -161,10 +162,11 @@ public:
     void SetError(uint16_t error);
     void Enable(uint8_t en);
     void SetMotionState(uint8_t stat) { if (stat) RState |= SM_MOTION; else RState &= ~SM_MOTION; }
-    int32_t SetPos(float pos) { RPos = pos; RState = (RState & ~(SM_MOTION)) | (SM_POSITIONLOOP|SM_VELOCITYLOOP|SM_CURRENTLOOP|SM_PWM|SM_ENABLE); return 1;}
-    int32_t SetVel(float vel) { VIn = vel; RState = (RState & ~(SM_MOTION|SM_POSITIONLOOP)) | (SM_VELOCITYLOOP|SM_CURRENTLOOP|SM_PWM|SM_ENABLE); return 1;}
-    int32_t SetCur(float cur) { CIn = cur; RState = (RState & ~(SM_MOTION|SM_POSITIONLOOP|SM_VELOCITYLOOP)) | (SM_CURRENTLOOP|SM_PWM|SM_ENABLE); return 1;}
-    int32_t SetCurQ(float cur) { CqOut = cur; CdOut = 0; RState = (RState & ~(SM_MOTION|SM_POSITIONLOOP|SM_VELOCITYLOOP|SM_CURRENTLOOP)) | (SM_PWM|SM_ENABLE); return 1;}
+    void SetOlCounter() { OperationCounter = (uint32_t)ceil(OtL * TICKS_IN_SECOND); }
+    int32_t SetPos(float pos) { RPos = pos; RState = (RState & ~(SM_MOTION)) | (SM_POSITIONLOOP|SM_VELOCITYLOOP|SM_CURRENTLOOP|SM_PWM|SM_ENABLE); SetOlCounter(); return 1;}
+    int32_t SetVel(float vel) { VIn = vel; RState = (RState & ~(SM_MOTION|SM_POSITIONLOOP)) | (SM_VELOCITYLOOP|SM_CURRENTLOOP|SM_PWM|SM_ENABLE); SetOlCounter(); return 1;}
+    int32_t SetCur(float cur) { CIn = cur; RState = (RState & ~(SM_MOTION|SM_POSITIONLOOP|SM_VELOCITYLOOP)) | (SM_CURRENTLOOP|SM_PWM|SM_ENABLE); SetOlCounter(); return 1;}
+    int32_t SetCurQ(float cur) { CqOut = cur; CdOut = 0; RState = (RState & ~(SM_MOTION|SM_POSITIONLOOP|SM_VELOCITYLOOP|SM_CURRENTLOOP)) | (SM_PWM|SM_ENABLE); SetOlCounter(); return 1;}
     int32_t SetTeta(float teta) { Teta = teta; RState = RState & ~SM_COMMUTATION; return 1;}
 
 private:

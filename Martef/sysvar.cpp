@@ -142,6 +142,10 @@ int32_t FlashSave(uint16_t ind, int16_t count, uint32_t* buf) {
         for (; i < count; i++) *buf++ = NONE; \
         return i; \
     }
+#define StructScalarDirectReadWrite(struc, var) \
+    StructScalarDirectRead(struc, var), \
+    [](uint16_t ind, uint16_t count, int32_t* buf) -> int32_t { *(int32_t*)&struc.var = *buf++; }
+
 #define StructDirectRead(struc, var, maxind) \
     [](uint16_t i)->int32_t* {return (int32_t*)&struc[i].var;}, \
     [](uint16_t ind, uint16_t count, int32_t* buf) -> int32_t {  \
