@@ -84,17 +84,23 @@ public:
 
 // Servo state bits
 #define SM_ENABLE           0x00000001
-#define SM_PWM              0x00000002
+#define SM_MOTION           0x00000002
+#define SM_PWM              0x00000004
 #define SM_COMMUTATION      0x00000008
 #define SM_VECTORCONTROL    0x00000010
-#define SM_POSITIONLOOP     0x00000020  
-#define SM_VELOCITYLOOP     0x00000040 
-#define SM_CURRENTLOOP      0x00000080  
-#define SM_INDEX            0x01000000
-#define SM_INDEX1           0x02000000
-#define SM_SIMULATION       0x10000000
-#define SM_HOME             0x40000000
-#define SM_MOTION           0x80000000
+#define SM_POSITIONLOOP     0x00000020
+#define SM_VELOCITYLOOP     0x00000040
+#define SM_CURRENTLOOP      0x00000080
+#define SM_INDEX            0x00001000
+#define SM_INDEX1           0x00002000
+#define SM_SIMULATION       0x00004000
+#define SM_HOME             0x00008000
+#define FLTB_GATEVCCLO      0x00010000
+#define FLTB_GATETHERM      0x00020000
+#define FLTB_GATEVDS        0x00040000
+#define FLTB_GATERESET      0x00080000
+#define FLTB_GATE           0x00100000
+#define FLTB_GATEI2C        0x00200000
 
 class MotionBase;
 
@@ -105,18 +111,23 @@ public:
     uint32_t RState, FState;
     // Bits:    
     // 0 - Enable
-    // 1 - Enable PWM        
-    // 2 - Enable DC (ignored)
+    // 1 - Motion Generation        
+    // 2 - Enable PWM        
     // 3 - Enable Phaser
     // 4 - Enable Vector Control
     // 5 - Enable Position Loop
     // 6 - Enable Velocity Loop
     // 7 - Enable Current Loop 
-    // 8 - Enable Analog Input (ignored)
-    // 16 - PWM mode (ignored)
-    // 17 - UHR (ignored)
-    // 28 - Simulation
-    // 31 - Motion Generation        
+    // 12 - Index
+    // 13 - Index1
+    // 14 - Simulation
+    // 15 - Motion Generation        
+    // 16 - Gate VCC UVLO fault
+    // 17 - Gate thermal fault
+    // 18 - Gate VDS fault
+    // 19 - Gate reset
+    // 20 - Gate Fault
+    // 21 - Gate I2C fault
 
     uint16_t Error;
     uint32_t Safety;

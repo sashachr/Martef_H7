@@ -27,7 +27,7 @@ void ServoStruct::Init(uint8_t index) {
     float bq[] = {100.0F, 0.7F};    // Bandwidth 700 Hz, Damping 0.7
     for (int i = 0; i < 4; i++) Vloop.Bq[i].Config(BQ_LPF, bq); 
     CurL = 50.F;
-    PwmL = 100.0F;
+    PwmL = 80.0F;
     EncDiL = 0.05F;
     PeL = 0.05F;
     NsL = -50; PsL = 50;
