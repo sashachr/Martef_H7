@@ -278,7 +278,7 @@
 /* 277                */ {0},
 /* 278                */ {0},
 /* 279                */ {0},
-/* 280 AIN            */ {0}, //{12, TYPE_FLOAT|VF_DIRECTREAD, (int32_t*)Adc.Ain, 0},
+/* 280 AIN            */ {24, TYPE_FLOAT|VF_DIRECTREAD, StructScalarDirectReadArray(Adc, Ain, 24), 0},
 /* 281 AINMIN         */ {0}, //{12, TYPE_FLOAT|VF_DIRECTREAD|VF_DIRECTWRITE|VF_FLASH, (int32_t*)Adc.AinMin, 0},
 /* 282 AINMAX         */ {0}, //{12, TYPE_FLOAT|VF_DIRECTREAD|VF_DIRECTWRITE|VF_FLASH, (int32_t*)Adc.AinMax, 0},
 /* 283 AINFILT        */ {0}, //{12, TYPE_FLOAT|VF_DIRECTREAD|VF_DIRECTWRITE|VF_FLASH, (int32_t*)Adc.Filter, 0},

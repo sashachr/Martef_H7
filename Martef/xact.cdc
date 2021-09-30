@@ -85,6 +85,7 @@
 "int attr(UINT8,PROPWRITE) ROTVEL[NAX] @271;\n"
 "int attr(UINT8,PROPWRITE) RORPOS[NAX] @272;\n"
 "int attr(UINT8,PROPWRITE) RORVEL[NAX] @273;\n"
+"float attr(READONLY) AIN[24] @280;\n"
 "int attr(UINT8) SGMOD[2] @340;\n"
 "float attr(PROPWRITE) SGPRD[2] @341;\n"
 "float SGDUT[2] @342;\n"

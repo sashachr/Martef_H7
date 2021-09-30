@@ -49,6 +49,7 @@ class Spi {
 class ServoStruct;
 
 class PmcuSpi {
+    uint32_t index;
     SPI_TypeDef* spi;
     DMA_TypeDef* dma;
     DMA_Stream_TypeDef *rxStream, *txStream; 

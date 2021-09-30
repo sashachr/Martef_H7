@@ -3,6 +3,7 @@
 #include "global.h"
 #include "martef.h"
 #include "timer.h"
+#include "adc.h"
 #include "encoder.h"
 #include "servo.h"
 #include "pmcuspi.h"
@@ -69,10 +70,10 @@ const SetServoVar ServoReps[] = {
 /*  9 OUTC      */ [](ServoStruct* s, float v) {s->OutC = v;},
 /* 10 IPOS      */ [](ServoStruct* s, float v) {s->IndPos = v;},
 /* 11 IPOS1     */ [](ServoStruct* s, float v) {s->IndPos1 = v;},
-/* 12           */ [](ServoStruct* s, float v) {},
-/* 13           */ [](ServoStruct* s, float v) {},
-/* 14           */ [](ServoStruct* s, float v) {},
-/* 15           */ [](ServoStruct* s, float v) {},
+/* 12           */ [](ServoStruct* s, float v) {Adc.Ain[(s->Index << 2) + 0] = v;},
+/* 13           */ [](ServoStruct* s, float v) {Adc.Ain[(s->Index << 2) + 1] = v;},
+/* 14           */ [](ServoStruct* s, float v) {Adc.Ain[(s->Index << 2) + 2] = v;},
+/* 15           */ [](ServoStruct* s, float v) {Adc.Ain[(s->Index << 2) + 3] = v;},
 /* 16           */ [](ServoStruct* s, float v) {},
 /* 17           */ [](ServoStruct* s, float v) {},
 /* 18           */ [](ServoStruct* s, float v) {},
@@ -89,10 +90,10 @@ const SetServoVar ServoReps[] = {
 /* 29 OUTC      */ [](ServoStruct* s, float v) {s->OutC = v;},
 /* 30 IPOS      */ [](ServoStruct* s, float v) {s->IndPos = v;},
 /* 31 IPOS1     */ [](ServoStruct* s, float v) {s->IndPos1 = v;},
-/* 32           */ [](ServoStruct* s, float v) {},
-/* 33           */ [](ServoStruct* s, float v) {},
-/* 34           */ [](ServoStruct* s, float v) {},
-/* 35           */ [](ServoStruct* s, float v) {},
+/* 32           */ [](ServoStruct* s, float v) {Adc.Ain[(s->Index << 2) + 0] = v; s->FCa = v;},
+/* 33           */ [](ServoStruct* s, float v) {Adc.Ain[(s->Index << 2) + 1] = v; s->FCb = v;},
+/* 34           */ [](ServoStruct* s, float v) {Adc.Ain[(s->Index << 2) + 2] = v;},
+/* 35           */ [](ServoStruct* s, float v) {Adc.Ain[(s->Index << 2) + 3] = v;},
 /* 37           */ [](ServoStruct* s, float v) {},
 /* 36           */ [](ServoStruct* s, float v) {},
 /* 38           */ [](ServoStruct* s, float v) {},
@@ -113,8 +114,9 @@ __attribute__((section(".ramD2"))) static uint32_t spiBufs[4 * 12 * NAX];
 
 PmcuSpi pmcu[NAX];
 
-void PmcuSpi::Init(uint8_t index, uint8_t ispi, uint8_t idma) {
-    servo = &Servo[index];
+void PmcuSpi::Init(uint8_t ind, uint8_t ispi, uint8_t idma) {
+    index  = ind;
+    servo = &Servo[ind];
     inBuf[0] = spiBufs + 4 * 12 * index;
     inBuf[1] = inBuf[0] + 12; outBuf[0] = inBuf[1] + 12; outBuf[1] = outBuf[0] + 12;
     spi = Spi::GetSpi(ispi);
@@ -148,6 +150,7 @@ void PmcuSpi::TickEnd() {
 }
 
 void PmcuSpi::DecipherReport(uint32_t* buf) {
+	if (servo->Index != 0) return;
     servo->FState = buf[0];
     servo->FPos = *(float*)(buf+1);
     servo->FPos1 = *(float*)(buf+2);
@@ -156,7 +159,7 @@ void PmcuSpi::DecipherReport(uint32_t* buf) {
 //    servo->Teta = *(float*)(buf+5);
     int i = iTick - 4;
     if (i < 0) i += 10;
-    const SetServoVar* rep = ServoReps+(iTick<<2);
+    const SetServoVar* rep = ServoReps+(i<<2);
     float* v = (float*)(buf+6);
     for (int i=0; i<4; i++) (*rep++)(servo, *v++);
 }

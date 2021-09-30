@@ -20,9 +20,9 @@ uint32_t adcBuf[2000];
 // 10       Temperature 		    1   16                ADC1_IN16		
 // 11       ADC_0.5_VREF	PB1	    2   9                ADC12_IN9		
 
-float AdcStruct::AinMin[12] = {0,   0,   0,  48, 40, 60, 54, 0, 0, 0, 0, 58};
-float AdcStruct::AinMax[12] = {100, 100, 50, 73, 60, 91, 82, 100, 72, 100, 100, 66};
-float AdcStruct::Filter[12] = {1, 0.2, 0.2, 0.085, 0.085, 0.085, 0.085, 1, 0.085, 1, 1, 0.02};
+float AdcStruct::AinMin[24] = {0,   0,   0,  48, 40, 60, 54, 0, 0, 0, 0, 58};
+float AdcStruct::AinMax[24] = {100, 100, 50, 73, 60, 91, 82, 100, 72, 100, 100, 66};
+float AdcStruct::Filter[24] = {1, 0.2, 0.2, 0.085, 0.085, 0.085, 0.085, 1, 0.085, 1, 1, 0.02};
 // float AdcStruct::filter1[12];
 
 void AdcStruct::Init()
