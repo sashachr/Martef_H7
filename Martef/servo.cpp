@@ -15,12 +15,48 @@
 
 ServoStruct Servo[NAX];
 
+uint32_t errors[33] = {
+    1000,       // FLT_MOTIONTIMEOUT
+    1000, 
+    1000, 
+    1000, 
+    1000, 
+    1000, 
+    1000, 
+    1000,
+    1000,
+    1000,
+    1000,
+    1000,
+    1000,
+    1000, 
+    1000, 
+    1000,       // FLT_UNKNOWN 
+    1020,       // FLT_GATEUVLO     
+    1021,       // FLT_GATETHERMAL 
+    1022,       // FLT_GATEVDS 
+    1023,       // FLT_GATERESET 
+    1024,       // FLT_GATE 
+    1025,       // FLT_GATEI2C 
+    1010,       // FLT_OVERCURRENT
+    1011,       // FLT_POWERVOLTAGE
+    1001,       // FLT_POSLIMIT
+    1001,       // FLT_POSLIMIT
+    1002,       // FLT_POSERROR
+    1003,       // FLT_SOFTLIMIT
+    1000,
+    1000,
+    1000,
+    1000,
+    1000,
+};
+
 void ServoStruct::Init(uint8_t index) {
     Index = index;
     Motion = NewMotion(index);
     InitialCounter = 1000;
     Vel = 3600; Acc = 36000; Dec = 36000; KDec = 36000; Jerk = 360000;
-    REncoder.Resolution = 360.F/1024.F; LEncoder.Resolution = 0.0005;
+    REncoder.Resolution = 360.F/4096.F; LEncoder.Resolution = 0.0005;
     Ploop.Pi.Kp = 50; Ploop.Pi.Ki = 0; Ploop.Pi.Li = 0;
     Vloop.Pi.Kp = 0.5; Vloop.Pi.Ki = 150; Vloop.Pi.Li = 60;
     Cdloop.Pi.Kp = Cqloop.Pi.Kp = 50; Cdloop.Pi.Ki = Cqloop.Pi.Ki = 1000; Cdloop.Pi.Li = Cqloop.Pi.Li = 80;
@@ -32,28 +68,14 @@ void ServoStruct::Init(uint8_t index) {
     PeL = 0.05F;
     NsL = -50; PsL = 50;
     OtL = 2; MtL = 5;
+    FaultDisable = 0x07FF0000; 
+    RelatedAxes = (1 << NAX) - 1;
 }
 
-void ServoStruct::Enable(uint8_t en) {}
-
-uint16_t ServoStruct::GetError(uint32_t safety) {
-    if (safety & SB_MOTORLOST) return FLT_MOTORLOST; 
-    if (safety & SB_EMERGENCY) return FLT_EMERGENCY;
-    if (safety & SB_UNKNOWNMOTOR) return FLT_UNKNOWNMOTOR;
-    if (safety & 0x00010000) return FLT_OVERVOLTAGE;
-    if (safety & 0x00200000) return FLT_ACCURRENT;
-    if (safety & 0x00400000) return FLT_DCCURRENT;
-    if (safety & 0x021E0000) return FLT_VOLTAGE;
-    return 0;
-}
-
-void ServoStruct::SetError(uint16_t error) {
-    Error = error;
-    // if (error != 0) {
-    //     Io.Io |= IO_FAULT;
-    // } else {
-    //     Io.Io &= ~IO_FAULT;
-    // }
+uint32_t ServoStruct::GetError(uint32_t fault, uint8_t severity) {
+    uint32_t f = fault & ((severity == 3) ? FaultDisable : (severity == 1) ? FaultKill : 0);
+    for (int i=0, j=1; i<32; i++, j<<1) if (f & j) return errors[i];
+    return FLT_UNKNOWN;
 }
 
 void ServoStruct::Tick() {
@@ -65,17 +87,31 @@ void ServoStruct::Tick() {
         RState |= SM_ENABLE|SM_PWM|SM_CURRENTLOOP|SM_VELOCITYLOOP|SM_POSITIONLOOP|SM_MOTION;
         OperationCounter = floor(MtL * TICKS_IN_SECOND);
     }
+    if ((RState & 1) != enable) {
+        enable = RState & 1;
+        if (enable) ResetError();
+    }
+    ((uint16_t*)&PreFault)[1] = ((uint16_t*)&FState)[1];
+    Fault = PreFault & ~FaultMask;
+    uint32_t severity = (Fault & FaultDisable) ? 3 : (Fault & FaultKill) ? 1 : 0;
+    if (severity > Severity) {
+        SetError(GetError(Fault, severity), severity);
+        for (int i=0, j=1; i < NAX; i++, j<<1) if (RelatedAxes & j) Servo[i].SetError(FLT_INDUCED, severity);
+    }
     Motion->Tick();
     if (RState & SM_MOTION) {
         RPos = Motion->RPos; RVel = Motion->RVel; RAcc = Motion->RAcc; RJerk = Motion->RJerk;
         if (Motion->phase == 0) RState &= ~SM_MOTION;
-        if (--OperationCounter == 0) SetError(FLT_TIMEOUT);
+        if (--OperationCounter == 0) Fault |= FLTB_MOTIONTIMEOUT;
     } else {
         if (OperationCounter) {
             if (--OperationCounter == 0) RState &= ~SM_ENABLE;
         }
     }
-
+    if (CInSource) {
+        CIn = *CInSource;
+        RState = (RState & ~(SM_MOTION|SM_POSITIONLOOP|SM_VELOCITYLOOP)) | (SM_CURRENTLOOP|SM_PWM|SM_ENABLE);
+    }
     // if (InitialCounter) InitialCounter--;
     // SafetyRaw = SafetyBits();
     // Safety = SafetyRaw & ~SafetyMask;
@@ -161,8 +197,8 @@ void ServoStruct::Tick() {
 	// Pwm.Tick();
 }
 
-uint32_t ServoStruct::SafetyBits() {
-    uint32_t saf = 0;
+//uint32_t ServoStruct::SafetyBits() {
+    // uint32_t saf = 0;
     // if ((Io.Io & IO_MOTORLOST) != 0) saf |= SB_MOTORLOST; 
     // if ((Io.Io & IO_EMERGENCY) != 0) saf |= SB_EMERGENCY; 
     // if (Motor == 0) saf |= SB_UNKNOWNMOTOR;
@@ -173,15 +209,9 @@ uint32_t ServoStruct::SafetyBits() {
     //         //     if ((Adc.Ain[i]<Adc.AinMin[i]) || (Adc.Ain[i]>Adc.AinMax[i])) saf |= m;
     //     }
     // }
-    return saf;
-}
+    // return saf;
+//}
 
 float* GetSignalSource(uint8_t ind) {
     return (ind == 10) ? &Signals[0].Sgn : (ind == 11) ? &Signals[1].Sgn : 0;
-}
-void ServoTick() {
-    for (int i = 0; i < NAX; i++) Servo[i].Tick();
-}
-void ServoInit() {
-    for (int i = 0; i < NAX; i++) Servo[i].Init(i);
 }

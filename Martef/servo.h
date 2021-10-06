@@ -95,12 +95,20 @@ public:
 #define SM_INDEX1           0x00002000
 #define SM_SIMULATION       0x00004000
 #define SM_HOME             0x00008000
+
+// Fault bits
+#define FLTB_MOTIONTIMEOUT  0x00000001
 #define FLTB_GATEVCCLO      0x00010000
 #define FLTB_GATETHERM      0x00020000
 #define FLTB_GATEVDS        0x00040000
 #define FLTB_GATERESET      0x00080000
 #define FLTB_GATE           0x00100000
 #define FLTB_GATEI2C        0x00200000
+#define FLTB_OVERCURRENT    0x00400000
+#define FLTB_POWERVOLTAGE   0x00800000
+#define FLTB_NLIMIT         0x01000000
+#define FLTB_PLIMIT         0x02000000
+#define FLTB_PEL            0x04000000
 
 class MotionBase;
 
@@ -108,8 +116,9 @@ class ServoStruct {
 public:
     uint8_t Index;
     uint8_t InTransition;
-    uint32_t RState, FState;
-    // Bits:    
+    uint32_t RState;
+    uint32_t FState;
+    // Control state bits:    
     // 0 - Enable
     // 1 - Motion Generation        
     // 2 - Enable PWM        
@@ -121,15 +130,25 @@ public:
     // 12 - Index
     // 13 - Index1
     // 14 - Simulation
-    // 15 - Motion Generation        
+    // 15 - Motion Generation     
+    
+    uint32_t RelatedAxes;
+    uint32_t PreFault, Fault, FaultMask, FaultKill, FaultDisable;
+    // Fault bits
+    //  0 - Motion timeout
     // 16 - Gate VCC UVLO fault
     // 17 - Gate thermal fault
     // 18 - Gate VDS fault
     // 19 - Gate reset
     // 20 - Gate Fault
     // 21 - Gate I2C fault
+    // 22 - Overcurrent fault
+    // 23 - Power voltage fault
+    // 24 - Negative limit fault
+    // 25 - Positive limit fault
+    // 26 - Position error fault
 
-    uint16_t Error;
+    uint32_t Error, Severity;
     uint32_t Safety;
     uint32_t SafetyRaw;
     uint32_t SafetyMask;
@@ -152,8 +171,8 @@ public:
     float OtL, MtL;                     // Maximal time of open-loop operation and single motion
     float Teta;                         // Commutation angle
     
-    uint8_t TPosRout, TVelRout, RPosRout, RVelRout;
-    float *TPosSource, *TVelSource, *RPosSource, *RVelSource;
+    uint8_t TPosRout, TVelRout, RPosRout, RVelRout, CInRout;
+    float *TPosSource, *TVelSource, *RPosSource, *RVelSource, *CInSource;
    
     uint32_t InitialCounter;
 
@@ -168,10 +187,11 @@ public:
 
 	void Init(uint8_t index);
     void Tick();
-    uint32_t SafetyBits();
-    uint16_t GetError(uint32_t safety);
-    void SetError(uint16_t error);
-    void Enable(uint8_t en);
+//    uint32_t SafetyBits();
+    uint32_t GetError(uint32_t safety, uint8_t severity);
+    void SetError(uint32_t error, uint8_t severity) { Error = error; Severity = severity; }
+    void ResetError() { Fault = Error = Severity = 0; }
+//    void Enable(uint8_t en);
     void SetMotionState(uint8_t stat) { if (stat) RState |= SM_MOTION; else RState &= ~SM_MOTION; }
     void SetOlCounter() { OperationCounter = (uint32_t)ceil(OtL * TICKS_IN_SECOND); }
     int32_t SetPos(float pos) { RPos = pos; RState = (RState & ~(SM_MOTION)) | (SM_POSITIONLOOP|SM_VELOCITYLOOP|SM_CURRENTLOOP|SM_PWM|SM_ENABLE); SetOlCounter(); return 1;}
@@ -182,14 +202,15 @@ public:
 
 private:
     float tpos;
+    uint8_t enable;
 };
 
 extern ServoStruct Servo[];
 
 float* GetSignalSource(uint8_t ind);
 
-void ServoTick();
-void ServoInit();
+inline void ServoInit() { for (int i = 0; i < NAX; i++) Servo[i].Init(i); }
+inline void ServoTick() { for (int i = 0; i < NAX; i++) Servo[i].Tick(); }
 
 #define ServoSetVar(func) \
     [](uint16_t ind, uint16_t count, int32_t* buf) -> int32_t {  \
