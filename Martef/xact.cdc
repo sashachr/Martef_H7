@@ -6,6 +6,7 @@
 "int attr(UINT32) ASTATE[NAX] @2;\n"
 "int attr(UINT32,READONLY) FSTATE[NAX] @3;\n"
 "int attr(UINT32,READONLY) AFAULT[NAX] @5;\n"
+"int attr(UINT32,READONLY) AHEALTH[NAX] @7;\n"
 "int attr(UINT32) TICK @10;\n"
 "float attr(PROPREAD,PROPWRITE) TIME @11;\n"
 "int attr(UINT32,PROPREAD,PROPWRITE) __scope[32064] @40;\n"
