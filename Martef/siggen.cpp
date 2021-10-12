@@ -12,29 +12,34 @@ SignalStruct Signals[2];
 
 void SignalStruct::Tick() {
 	if (Type == 0) return;
-	switch (Type) {
+	int type = Type;
+	float from, to;
+	if (type < 100) { // symmetrical
+		from = -Max; to = Max;
+	} else if (type < 200) { // zero-based
+		from = 0; to = Max; type -= 100;
+	} else { // min-max
+		from = Min; to = Max; type -= 200;
+	}
+	if (++count >= period) count = 0; 
+	switch (type) {
 		case SGN_SQUARE:
-			if (count == 0) Sgn = Max;
-			if (++count >= period) { count = 0;  }
-			if (count == (period >> 1)) Sgn = Min;
+			Sgn = (count < (period >> 1)) ? from : to;
 			break;
 		case SGN_RAMP: {
-			if (++count >= period) { count = 0; down = !down; }
-			float a = ((float)count)/period;
-			Sgn = down ? (1 - a) * Max + a * Min : (1 - a) * Min + a * Max;
+			int up = count < (period >> 1);
+			float a = up ? (float)count/(period >> 1) : (float)(period - count)/(period - (period >> 1));
+			Sgn = (1 - a) * from + a * to;
 			break;
 		}
-		case 3:
-			if (++count >= period) { count = 0;  }
-			Sgn = (count < Duty*period) ? Max : Min;
+		case SGN_PULSE:
+			Sgn = (count < Duty*period) ? to : from;
 			break;
-		case 4:
-			if (++count >= period) { count = 0;  }
-			Sgn = 0.5F*((Min+Max) + (Max-Min)*sinf((2*M_PI*count)/period));
+		case SGN_SIN:
+			Sgn = 0.5F*((from+to) + (to-from)*sinf((2*M_PI*count)/period));
 			break;
-		case 5:
-			if (++count >= period) { count = 0;  }
-			Sgn = 0.5F*((Min+Max) + (Max-Min)*cosf((2*M_PI*count)/period));
+		case SGN_COS:
+			Sgn = 0.5F*((from+to) + (to-from)*cosf((2*M_PI*count)/period));
 			break;
 	}
 }

@@ -4,17 +4,16 @@
 //
 #pragma once
 
-#define SGN_NONE    0
-#define SGN_SQUARE  1
-#define SGN_RAMP    2
-#define SGN_PULSE   3
-#define SGN_SIN     4
-#define SGN_COS     5
+#define SGN_NONE        0x00000000
+#define SGN_SQUARE      0x00000001
+#define SGN_RAMP        0x00000002
+#define SGN_PULSE       0x00000003
+#define SGN_SIN         0x00000004
+#define SGN_COS         0x00000005
  
-
 class SignalStruct {
 public:
-    uint8_t Type;
+    uint32_t Type;
     float Period, Duty, Min, Max;
     float Sgn;
     SignalStruct(): Type(0), Duty(0.5F), Min(-100), Max(100) { SetPeriod(0.01F); }

@@ -57,9 +57,10 @@ void ServoStruct::Init(uint8_t index) {
     InitialCounter = 1000;
     Vel = 3600; Acc = 36000; Dec = 36000; KDec = 36000; Jerk = 360000;
     REncoder.Resolution = 360.F/4096.F; LEncoder.Resolution = 0.0005;
+    Commut.Period = 4096;
     Ploop.Pi.Kp = 50; Ploop.Pi.Ki = 0; Ploop.Pi.Li = 0;
     Vloop.Pi.Kp = 0.5; Vloop.Pi.Ki = 150; Vloop.Pi.Li = 60;
-    Cdloop.Pi.Kp = Cqloop.Pi.Kp = -50; Cdloop.Pi.Ki = Cqloop.Pi.Ki = 1000; Cdloop.Pi.Li = Cqloop.Pi.Li = 80;
+    Cdloop.Pi.Kp = Cqloop.Pi.Kp = 0.2; Cdloop.Pi.Ki = Cqloop.Pi.Ki = 1000; Cdloop.Pi.Li = Cqloop.Pi.Li = 80;
     float bq[] = {100.0F, 0.7F};    // Bandwidth 700 Hz, Damping 0.7
     for (int i = 0; i < 4; i++) Vloop.Bq[i].Config(BQ_LPF, bq); 
     CurL = 50.F;
