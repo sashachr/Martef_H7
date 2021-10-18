@@ -14,7 +14,7 @@
 class SignalStruct {
 public:
     uint32_t Type;
-    float Period, Duty, Min, Max;
+    float Period, Duty, Min, Max, Filt;
     float Sgn;
     SignalStruct(): Type(0), Duty(0.5F), Min(-100), Max(100) { SetPeriod(0.01F); }
     void Tick();
@@ -26,7 +26,7 @@ public:
         Reset();
     }
 private:
-    uint32_t period, count;
+    uint32_t type, period, count;
     float rate;
     uint8_t down;
 };

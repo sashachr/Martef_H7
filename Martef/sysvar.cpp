@@ -196,6 +196,19 @@ int32_t FlashSave(uint16_t ind, int16_t count, uint32_t* buf) {
         for (; (i < count) && (j < maxind); i++,j++) if (!IsNan(*buf)) struc[j].var = *(type*)buf++; \
         return i; \
     }
+#define StructReadBit(struc, var, maxind, mask) \
+    [](uint16_t ind, uint16_t count, int32_t* buf) -> int32_t {  \
+        int16_t i = 0, j = ind; \
+        for (; (i < count) && (j < maxind); i++,j++) *buf++ = (struc[j].var & mask) != 0; \
+        for (; i < count; i++) *buf++ = NONE; \
+        return i; \
+    }
+#define StructWriteBit(struc, var, maxind, mask) \
+    [](uint16_t ind, uint16_t count, int32_t* buf) -> int32_t {  \
+        int16_t i = 0, j = ind; \
+        for (; (i < count) && (j < maxind); i++,j++) if (*buf == 0) struc[j].var &= ~mask; else if (*buf == 1) struc[j].var |= mask; \
+        return i; \
+    }
 #define WriteSignalSource(rout, source) \
     [](uint16_t ind, uint16_t count, int32_t* buf) -> int32_t {  \
         int16_t i = 0, j = ind; \

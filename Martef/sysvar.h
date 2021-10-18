@@ -55,7 +55,7 @@ struct Vardef {
     VarReadWrite write;
 };
 
-#define nSysVars 346
+#define nSysVars 347
 extern Vardef SysVars[];
 
 
