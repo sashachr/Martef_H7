@@ -80,6 +80,11 @@ uint32_t ServoStruct::GetError(uint32_t fault, uint8_t severity) {
 }
 
 void ServoStruct::Tick() {
+    FVel1 = (FPos1 - fpos1) * TICKS_IN_SECOND;
+    fpos1 = FPos1;
+    FFVel1 = 0.3F * FVel1 + 0.7F * fvel1;
+    FAcc1 = (FVel1 - fvel1) * TICKS_IN_SECOND;
+    fvel1 = FVel1;
     if (TPosSource) TPos = *TPosSource;
     if (tpos != TPos) {
         tpos = TPos;
@@ -108,6 +113,10 @@ void ServoStruct::Tick() {
         if (OperationCounter) {
             if (--OperationCounter == 0) RState &= ~SM_ENABLE;
         }
+    }
+    if (VInSource) {
+        VIn = *VInSource;
+        RState = (RState & ~(SM_MOTION|SM_POSITIONLOOP)) | (SM_VELOCITYLOOP|SM_CURRENTLOOP|SM_PWM|SM_ENABLE);
     }
     if (CInSource) {
         CIn = *CInSource;

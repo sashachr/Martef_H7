@@ -158,6 +158,7 @@ public:
     float TPos, TVel;                   // Target values
     float RPos, RVel, RAcc, RJerk;      // Reference values
     float FPos, FPos1, FVel1, FAcc1;    // Feedback values
+    float FFVel1;                       // Filtered feedback velocity
     float IndPos, IndPos1;              // Index position of rotary and linear encoders
     float Pe, Ve;                       // Position error, velocity error
     float PIn, VIn, POut, VOut;         // Inputs/outputs of position/velocity loop
@@ -171,8 +172,8 @@ public:
     float OtL, MtL;                     // Maximal time of open-loop operation and single motion
     float Teta;                         // Commutation angle
     
-    uint8_t TPosRout, TVelRout, RPosRout, RVelRout, CInRout;
-    float *TPosSource, *TVelSource, *RPosSource, *RVelSource, *CInSource;
+    uint8_t TPosRout, TVelRout, RPosRout, VInRout, CInRout;
+    float *TPosSource, *TVelSource, *RPosSource, *VInSource, *CInSource;
    
     uint32_t InitialCounter;
 
@@ -201,7 +202,7 @@ public:
     int32_t SetTeta(float teta) { Teta = teta; RState = RState & ~SM_COMMUTATION; return 1;}
 
 private:
-    float tpos;
+    float tpos, fpos1, fvel1;
     uint8_t enable;
 };
 
