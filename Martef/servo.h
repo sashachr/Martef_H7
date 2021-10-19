@@ -91,6 +91,7 @@ public:
 #define SM_POSITIONLOOP     0x00000020
 #define SM_VELOCITYLOOP     0x00000040
 #define SM_CURRENTLOOP      0x00000080
+#define SM_SETFPOS          0x00000100
 #define SM_INDEX            0x00001000
 #define SM_INDEX1           0x00002000
 #define SM_SIMULATION       0x00004000
@@ -109,6 +110,14 @@ public:
 #define FLTB_NLIMIT         0x01000000
 #define FLTB_PLIMIT         0x02000000
 #define FLTB_PEL            0x04000000
+
+// Routable variables
+#define RO_TPOS             1
+#define RO_RPOS             2
+#define RO_RVEL             3
+#define RO_VIN              4
+#define RO_CIN              5
+
 
 class MotionBase;
 
@@ -157,8 +166,8 @@ public:
     float Vel, Acc, Dec, KDec, Jerk;    // Motion parameters
     float TPos, TVel;                   // Target values
     float RPos, RVel, RAcc, RJerk;      // Reference values
-    float FPos, FPos1, FVel1, FAcc1;    // Feedback values
-    float FFVel1;                       // Filtered feedback velocity
+    float FPos, FPos1, FVel, FAcc;      // Feedback values
+    float VelF, FFVel;                  // Filtered feedback velocity
     float IndPos, IndPos1;              // Index position of rotary and linear encoders
     float Pe, Ve;                       // Position error, velocity error
     float PIn, VIn, POut, VOut;         // Inputs/outputs of position/velocity loop
@@ -172,8 +181,8 @@ public:
     float OtL, MtL;                     // Maximal time of open-loop operation and single motion
     float Teta;                         // Commutation angle
     
-    uint8_t TPosRout, TVelRout, RPosRout, VInRout, CInRout;
-    float *TPosSource, *TVelSource, *RPosSource, *VInSource, *CInSource;
+    uint8_t TPosRout, RPosRout, TVelRout, VInRout, CInRout;
+    float *TPosSource, *RPosSource, *TVelSource, *VInSource, *CInSource;
    
     uint32_t InitialCounter;
 
@@ -192,14 +201,18 @@ public:
     uint32_t GetError(uint32_t safety, uint8_t severity);
     void SetError(uint32_t error, uint8_t severity) { Error = error; Severity = severity; }
     void ResetError() { Fault = Error = Severity = 0; }
-//    void Enable(uint8_t en);
+    uint8_t IsEnabled() { return RState & 1; }
     void SetMotionState(uint8_t stat) { if (stat) RState |= SM_MOTION; else RState &= ~SM_MOTION; }
+    uint8_t SetServoMode(uint32_t mode);
     void SetOlCounter() { OperationCounter = (uint32_t)ceil(OtL * TICKS_IN_SECOND); }
     int32_t SetPos(float pos) { RPos = pos; RState = (RState & ~(SM_MOTION)) | (SM_POSITIONLOOP|SM_VELOCITYLOOP|SM_CURRENTLOOP|SM_PWM|SM_ENABLE); SetOlCounter(); return 1;}
     int32_t SetVel(float vel) { VIn = vel; RState = (RState & ~(SM_MOTION|SM_POSITIONLOOP)) | (SM_VELOCITYLOOP|SM_CURRENTLOOP|SM_PWM|SM_ENABLE); SetOlCounter(); return 1;}
     int32_t SetCur(float cur) { CIn = cur; RState = (RState & ~(SM_MOTION|SM_POSITIONLOOP|SM_VELOCITYLOOP)) | (SM_CURRENTLOOP|SM_PWM|SM_ENABLE); SetOlCounter(); return 1;}
     int32_t SetCurQ(float cur) { CqOut = cur; CdOut = 0; RState = (RState & ~(SM_MOTION|SM_POSITIONLOOP|SM_VELOCITYLOOP|SM_CURRENTLOOP)) | (SM_PWM|SM_ENABLE); SetOlCounter(); return 1;}
     int32_t SetTeta(float teta) { Teta = teta; RState = RState & ~SM_COMMUTATION; return 1;}
+    uint8_t SetSignalRout(uint8_t var, uint8_t rout);
+    static float* GetSignalSource(uint8_t rout);
+    void SetFpos(float pos);
 
 private:
     float tpos, fpos1, fvel1;
@@ -208,7 +221,6 @@ private:
 
 extern ServoStruct Servo[];
 
-float* GetSignalSource(uint8_t ind);
 
 inline void ServoInit() { for (int i = 0; i < NAX; i++) Servo[i].Init(i); }
 inline void ServoTick() { for (int i = 0; i < NAX; i++) Servo[i].Tick(); }

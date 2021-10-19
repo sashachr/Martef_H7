@@ -100,9 +100,11 @@ extern byte Program[MaxProgram];
 #define TST_SLOWMOTION			404
 #define TST_INDEX				405
 #define TST_BRICKTIME			406
-#define MRE_WRONGID             500
-#define MRE_WRONGINDEX          501
-#define MRE_WRONGVALUE          502
+// Immediate command errors
+#define MRE_WRONGID             100
+#define MRE_WRONGINDEX          101
+#define MRE_WRONGVALUE          102
+#define MRE_NOCOMMUT            103
 
 extern uint8_t ProductString[];
 extern uint8_t ManufacturerString[];

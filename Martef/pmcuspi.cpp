@@ -167,7 +167,10 @@ void PmcuSpi::DecipherReport(uint32_t* buf) {
 void PmcuSpi::EncipherCommand(uint32_t* buf) {
     uint32_t stat = servo->RState;
     buf[0] = stat;
-    if (stat & SM_POSITIONLOOP) {
+    if (stat & SM_SETFPOS) {
+    	*(float*)(buf+1) = servo->FPos;
+        servo->RState &= ~SM_SETFPOS;
+    } else if (stat & SM_POSITIONLOOP) {
     	*(float*)(buf+1) = servo->RPos;
         *(float*)(buf+2) = servo->RVel;
     } else if (stat & SM_VELOCITYLOOP) {

@@ -209,13 +209,16 @@ int32_t FlashSave(uint16_t ind, int16_t count, uint32_t* buf) {
         for (; (i < count) && (j < maxind); i++,j++) if (*buf == 0) struc[j].var &= ~mask; else if (*buf == 1) struc[j].var |= mask; \
         return i; \
     }
-#define WriteSignalSource(rout, source) \
+#define WriteSignalRout(var) \
     [](uint16_t ind, uint16_t count, int32_t* buf) -> int32_t {  \
         int16_t i = 0, j = ind; \
-        for (; (i < count) && (j < NAX); i++,j++,buf++) { \
-            Servo[ind].rout = (uint8_t)*buf; \
-            Servo[ind].source = GetSignalSource((uint8_t)*buf); \
-        } \
+        for (; (i < count) && (j < NAX); i++,j++,buf++) Servo[i].SetSignalRout(var, (uint8_t)*buf); \
+        return i; \
+    }
+#define WriteFpos \
+    [](uint16_t ind, uint16_t count, int32_t* buf) -> int32_t {  \
+        int16_t i = 0, j = ind; \
+        for (; (i < count) && (j < NAX); i++,j++,buf++) Servo[i].SetFpos(*(float*)buf); \
         return i; \
     }
 
