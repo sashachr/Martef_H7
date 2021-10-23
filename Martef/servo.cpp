@@ -89,18 +89,24 @@ void ServoStruct::Tick() {
     fpos1 = FPos1; 
     Ve = VIn + RVel - FVel;
     if (TPosSource) {
-        if (IsEnabled()) TPos = *TPosSource; else { TPosRout = 0; TPosSource = 0; }
-    }
-    if (tpos != TPos) {
-        tpos = TPos;
-        Motion->Vel = Vel; Motion->Acc = Acc; Motion->Dec = Dec; Motion->Jerk = Jerk;
-		new(Motion) TrapezoidalMotion(tpos, 0);
-        RState |= SM_ENABLE|SM_POSITIONLOOP|SM_MOTION;
-        OperationCounter = floor(MtL * TICKS_IN_SECOND);
+        if (IsEnabled()) SetTPos(*TPosSource); else { TPosRout = 0; TPosSource = 0; }
     }
     if ((RState & 1) != enable) {
         enable = RState & 1;
-        if (enable) ResetError();
+        if (enable) ResetError();     
+    }
+    if (IsPosLoopEnabled()) {
+        if (tpos != TPos) {
+            tpos = TPos;
+            Motion->Vel = Vel; Motion->Acc = Acc; Motion->Dec = Dec; Motion->Jerk = Jerk;
+            Motion->RPos = RPos; Motion->RVel = RVel;
+            new(Motion) TrapezoidalMotion(tpos, 0);
+            RState |= SM_ENABLE|SM_POSITIONLOOP|SM_MOTION;
+            OperationCounter = floor(MtL * TICKS_IN_SECOND);
+        }
+    } else {
+        tpos = TPos = RPos = FPos;
+        RVel = 0;
     }
     ((uint16_t*)&PreFault)[1] = ((uint16_t*)&FState)[1];
     Fault = PreFault & ~FaultMask;
@@ -132,6 +138,15 @@ uint8_t ServoStruct::SetServoMode(uint32_t mode) {
         if ((mode & (SM_POSITIONLOOP|SM_VELOCITYLOOP)) && !(RState & SM_COMMUTATION)) return MRE_NOCOMMUT;
     }
     RState = (RState & ~(SM_POSITIONLOOP|SM_VELOCITYLOOP|SM_CURRENTLOOP|SM_PWM)) | mode;
+    return 0;
+}
+
+uint8_t ServoStruct::SetTPos(float pos) {
+    uint8_t r;
+    if ((RState & (SM_POSITIONLOOP|SM_ENABLE)) != (SM_POSITIONLOOP|SM_ENABLE)) {
+        if (r = SetServoMode(SM_POSITIONLOOP|SM_ENABLE)) return r;
+    }
+    TPos = pos;
     return 0;
 }
 

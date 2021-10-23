@@ -20,7 +20,7 @@
 "float attr(PROPWRITE) RVEL[NAX] @111;\n"
 "float attr(READONLY) RACC[NAX] @112;\n"
 "float attr(READONLY) RJERK[NAX] @113;\n"
-"float TPOS[NAX] @115;\n"
+"float attr(PROPWRITE) TPOS[NAX] @115;\n"
 "float TVEL[NAX] @116;\n"
 "float attr(PROPWRITE) FPOS1[NAX] @119;\n"
 "float attr(PROPWRITE) FPOS[NAX] @120;\n"

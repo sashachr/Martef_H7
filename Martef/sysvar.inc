@@ -113,7 +113,7 @@
 /* 112 RACC           */ {NAX, TYPE_FLOAT|VF_DIRECTREAD, ServoDirectRead(RAcc), 0},
 /* 113 RJERK          */ {NAX, TYPE_FLOAT|VF_DIRECTREAD, ServoDirectRead(RJerk), 0},
 /* 114                */ {0},
-/* 115 TPOS           */ {NAX, TYPE_FLOAT|VF_DIRECTREAD|VF_DIRECTWRITE, ServoDirectReadWrite(TPos)},
+/* 115 TPOS           */ {NAX, TYPE_FLOAT|VF_DIRECTREAD|VF_PROPWRITE, ServoDirectRead(TPos), ServoSetTPos},
 /* 116 TVEL           */ {NAX, TYPE_FLOAT|VF_DIRECTREAD|VF_DIRECTWRITE, ServoDirectReadWrite(TVel)},
 /* 117                */ {0},
 /* 118                */ {0},

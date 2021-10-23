@@ -201,10 +201,12 @@ public:
     uint32_t GetError(uint32_t safety, uint8_t severity);
     void SetError(uint32_t error, uint8_t severity) { Error = error; Severity = severity; }
     void ResetError() { Fault = Error = Severity = 0; }
-    uint8_t IsEnabled() { return RState & 1; }
+    uint8_t IsEnabled() { return RState & SM_ENABLE; }
+    uint8_t IsPosLoopEnabled() { return (RState & SM_ENABLE) && (RState & SM_POSITIONLOOP); }
     void SetMotionState(uint8_t stat) { if (stat) RState |= SM_MOTION; else RState &= ~SM_MOTION; }
     uint8_t SetServoMode(uint32_t mode);
     void SetOlCounter() { OperationCounter = (uint32_t)ceil(OtL * TICKS_IN_SECOND); }
+    uint8_t SetTPos(float pos);
     int32_t SetPos(float pos) { RPos = pos; RState = (RState & ~(SM_MOTION)) | (SM_POSITIONLOOP|SM_VELOCITYLOOP|SM_CURRENTLOOP|SM_PWM|SM_ENABLE); SetOlCounter(); return 1;}
     int32_t SetVel(float vel) { VIn = vel; RState = (RState & ~(SM_MOTION|SM_POSITIONLOOP)) | (SM_VELOCITYLOOP|SM_CURRENTLOOP|SM_PWM|SM_ENABLE); SetOlCounter(); return 1;}
     int32_t SetCur(float cur) { CIn = cur; RState = (RState & ~(SM_MOTION|SM_POSITIONLOOP|SM_VELOCITYLOOP)) | (SM_CURRENTLOOP|SM_PWM|SM_ENABLE); SetOlCounter(); return 1;}
@@ -231,6 +233,7 @@ inline void ServoTick() { for (int i = 0; i < NAX; i++) Servo[i].Tick(); }
         for (; (i < count) && (j < NAX); i++,j++) if (!IsNan(*buf)) Servo[j].func(*(float*)buf++); \
         return i; \
     }
+#define ServoSetTPos  ServoSetVar(SetTPos)
 #define ServoSetPos  ServoSetVar(SetPos)
 #define ServoSetVel  ServoSetVar(SetVel)
 #define ServoSetCur  ServoSetVar(SetCur)
