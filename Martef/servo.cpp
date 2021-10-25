@@ -68,7 +68,8 @@ void ServoStruct::Init(uint8_t index) {
     EncDiL = 0.05F;
     PeL = 0.05F;
     NsL = -50; PsL = 50;
-    OtL = 2; MtL = 5;
+    OtL = 2; MtL = 0;
+    VelF = 0.9;
     FaultDisable = 0x07FF0000; 
     RelatedAxes = (1 << NAX) - 1;
 }
@@ -80,6 +81,8 @@ uint32_t ServoStruct::GetError(uint32_t fault, uint8_t severity) {
 }
 
 void ServoStruct::Tick() {
+    RPos4 = RPos3; RPos3 = RPos2; RPos2 = RPos1; RPos1 = RPos;
+    Pe = RPos4 - FPos;
     float v = FPos1 - fpos1; 
     if (v > 180) v -= 360; else if (v < -180) v += 360;
     v *= TICKS_IN_SECOND;
@@ -119,11 +122,9 @@ void ServoStruct::Tick() {
     if (RState & SM_MOTION) {
         RPos = Motion->RPos; RVel = Motion->RVel; RAcc = Motion->RAcc; RJerk = Motion->RJerk;
         if (Motion->phase == 0) RState &= ~SM_MOTION;
-        if (--OperationCounter == 0) Fault |= FLTB_MOTIONTIMEOUT;
+        if (OperationCounter && (--OperationCounter == 0)) Fault |= FLTB_MOTIONTIMEOUT;
     } else {
-        if (OperationCounter) {
-            if (--OperationCounter == 0) RState &= ~SM_ENABLE;
-        }
+        if (OperationCounter && (--OperationCounter == 0)) RState &= ~SM_ENABLE;
     }
     if (VInSource) {
         if (IsEnabled()) VIn = *VInSource; else { VInRout = 0; VInSource = 0; }

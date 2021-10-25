@@ -32,7 +32,7 @@ float attr(READONLY) FCD[NAX] @125;
 float attr(READONLY) FCQ[NAX] @126;
 float attr(READONLY) PE[NAX] @127;
 float attr(READONLY) VE[NAX] @128;
-float attr(READONLY) FFVEL[NAX] @129;
+float attr(READONLY) NFVEL[NAX] @129;
 float attr(PROPWRITE) VIN[NAX] @131;
 float attr(PROPWRITE) CIN[NAX] @132;
 float attr(READONLY) CDOUT[NAX] @133;

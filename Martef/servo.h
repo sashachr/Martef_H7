@@ -166,6 +166,7 @@ public:
     float Vel, Acc, Dec, KDec, Jerk;    // Motion parameters
     float TPos, TVel;                   // Target values
     float RPos, RVel, RAcc, RJerk;      // Reference values
+    float RPos1, RPos2, RPos3, RPos4;   // Delayed RPos
     float FPos, FPos1, FVel, FAcc;      // Feedback values
     float VelF, FFVel;                  // Filtered feedback velocity
     float IndPos, IndPos1;              // Index position of rotary and linear encoders

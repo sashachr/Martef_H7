@@ -156,7 +156,7 @@ void PmcuSpi::DecipherReport(uint32_t* buf) {
     servo->FPos1 = *(float*)(buf+2);
     servo->FCd = *(float*)(buf+3);
     servo->FCq = *(float*)(buf+4);
-//    servo->Teta = *(float*)(buf+5);
+//    servo->RPosF = *(float*)(buf+5);
     int i = iTick - 4;
     if (i < 0) i += 10;
     const SetServoVar* rep = ServoReps+(i<<2);
