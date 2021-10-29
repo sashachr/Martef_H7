@@ -46,7 +46,10 @@ MEMORY
 {
   ITCMRAM (xrw)    : ORIGIN = 0x00000000,   LENGTH = 64K
   DTCMRAM (xrw)    : ORIGIN = 0x20000000,   LENGTH = 128K
-  FLASH    (rx)    : ORIGIN = 0x08000000,   LENGTH = 1024K
+  FLASH_BOOT (rx)  : ORIGIN = 0x08000000,   LENGTH = 128K
+  FLASH_APP (rx)   : ORIGIN = 0x08020000,   LENGTH = 128K
+  FLASH_FIRM (rx)  : ORIGIN = 0x08040000,   LENGTH = 256K
+  FLASH_CACHE (rx) : ORIGIN = 0x080A0000,   LENGTH = 256K
   RAM_D1  (xrw)    : ORIGIN = 0x24000000,   LENGTH = 320K
   RAM_D2  (xrw)    : ORIGIN = 0x30000000,   LENGTH = 32K
   RAM_D3  (xrw)    : ORIGIN = 0x38000000,   LENGTH = 16K
@@ -55,15 +58,15 @@ MEMORY
 /* Define output sections */
 SECTIONS
 {
-  /* The startup code goes first into FLASH */
+  /* The vector table goes first into FLASH_FIRM */
   .isr_vector :
   {
     . = ALIGN(4);
     KEEP(*(.isr_vector)) /* Startup code */
     . = ALIGN(4);
-  } >FLASH
+  } >FLASH_FIRM
 
-  /* The program code and other data goes into FLASH */
+  /* The program code and other data goes into FLASH_FIRM */
   .text :
   {
     . = ALIGN(4);
@@ -78,30 +81,30 @@ SECTIONS
 
     . = ALIGN(4);
     _etext = .;        /* define a global symbols at end of code */
-  } >FLASH
+  } >FLASH_FIRM
 
-  /* Constant data goes into FLASH */
+  /* Constant data goes into FLASH_FIRM */
   .rodata :
   {
     . = ALIGN(4);
     *(.rodata)         /* .rodata sections (constants, strings, etc.) */
     *(.rodata*)        /* .rodata* sections (constants, strings, etc.) */
     . = ALIGN(4);
-  } >FLASH
+  } >FLASH_FIRM
 
-  .ARM.extab   : { *(.ARM.extab* .gnu.linkonce.armextab.*) } >FLASH
+  .ARM.extab   : { *(.ARM.extab* .gnu.linkonce.armextab.*) } >FLASH_FIRM
   .ARM : {
     __exidx_start = .;
     *(.ARM.exidx*)
     __exidx_end = .;
-  } >FLASH
+  } >FLASH_FIRM
 
   .preinit_array     :
   {
     PROVIDE_HIDDEN (__preinit_array_start = .);
     KEEP (*(.preinit_array*))
     PROVIDE_HIDDEN (__preinit_array_end = .);
-  } >FLASH
+  } >FLASH_FIRM
 
   .init_array :
   {
@@ -109,7 +112,7 @@ SECTIONS
     KEEP (*(SORT(.init_array.*)))
     KEEP (*(.init_array*))
     PROVIDE_HIDDEN (__init_array_end = .);
-  } >FLASH
+  } >FLASH_FIRM
 
   .fini_array :
   {
@@ -117,7 +120,7 @@ SECTIONS
     KEEP (*(SORT(.fini_array.*)))
     KEEP (*(.fini_array*))
     PROVIDE_HIDDEN (__fini_array_end = .);
-  } >FLASH
+  } >FLASH_FIRM
 
   /* used by the startup to initialize data */
   _sidata = LOADADDR(.data);
@@ -134,7 +137,7 @@ SECTIONS
 
     . = ALIGN(4);
     _edata = .;        /* define a global symbol at data end */
-  } >DTCMRAM AT> FLASH
+  } >DTCMRAM AT> FLASH_FIRM
 
   /* Uninitialized data section */
   . = ALIGN(4);
@@ -187,7 +190,7 @@ SECTIONS
     *(.ramD1init)
     . = ALIGN(4);
     _eramD1init = .;
-  } >RAM_D1 AT> FLASH
+  } >RAM_D1 AT> FLASH_FIRM
   .ramD1zero : /* Space before ':' is critical */
   {
     . = ALIGN(4);
@@ -213,7 +216,7 @@ SECTIONS
     *(.ramD2init)
     . = ALIGN(4);
     _eramD2init = .;
-  } >RAM_D2 AT> FLASH
+  } >RAM_D2 AT> FLASH_FIRM
   .ramD2zero : /* Space before ':' is critical */
   {
     . = ALIGN(4);
@@ -239,7 +242,7 @@ SECTIONS
     *(.ramD3init)
     . = ALIGN(4);
     _eramD3init = .;
-  } >RAM_D3 AT> FLASH
+  } >RAM_D3 AT> FLASH_FIRM
   .ramD3zero : /* Space before ':' is critical */
   {
     . = ALIGN(4);
