@@ -34,15 +34,15 @@
 .global  Default_Handler
 
 /* start address for the initialization values of the .data section.
-defined in linker script */
+defined in linker script 
 .word  _sidata
-/* start address for the .data section. defined in linker script */
+/* start address for the .data section. defined in linker script 
 .word  _sdata
-/* end address for the .data section. defined in linker script */
+/* end address for the .data section. defined in linker script 
 .word  _edata
-/* start address for the .bss section. defined in linker script */
+/* start address for the .bss section. defined in linker script 
 .word  _sbss
-/* end address for the .bss section. defined in linker script */
+/* end address for the .bss section. defined in linker script 
 .word  _ebss
 /* stack used for SystemInit_ExtMemCtl; always internal RAM used */
 
@@ -55,7 +55,7 @@ defined in linker script */
  * @retval : None
 */
 
-    .section  .text.Reset_Handler
+  .section  .text.Reset_Handler
   .weak  Reset_Handler
   .type  Reset_Handler, %function
 Reset_Handler:
@@ -64,11 +64,8 @@ Reset_Handler:
 /* Call the clock system initialization function.*/
   bl  SystemInit
 
-/* Call RAM initialization. */
-  bl  RamInit;
-
 /* Call the application's entry point.*/
-  bl  BootStub
+  bl  main
   bx  lr
 .size  Reset_Handler, .-Reset_Handler
 

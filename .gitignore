@@ -14,8 +14,8 @@
 build/
 Includes/
 Binaries/
-Debug/
-Release/
+*Debug/
+*Release/
 
 # VSC and VS
 .vscode/
