@@ -47,6 +47,14 @@ typedef int32_t* (*VarAddress)(uint16_t ind); // returns variable address
 #define VF_PROPWRITE        0x0080
 #define VF_FLASH            0x1000
 
+// Categories
+#define CAT_POS             0
+#define CAT_POS1            0
+#define CAT_VEL             0
+#define CAT_ACC             0
+#define CAT_JERK            0
+#define CAT_PERCENT         0
+
 struct Vardef {
     uint16_t size;
     uint16_t flags;

@@ -87,6 +87,13 @@ def Sysvartable2Cdf(sysvartable, prefixfrom, cdftext, cdfcpp):
             if 'VF_PROPREAD' in iatts: oatts.append('PROPREAD')
             if 'VF_PROPWRITE' in iatts: oatts.append('PROPWRITE')
             if 'VF_FLASH' in iatts: oatts.append('FLASH')
+            if 'CAT_POS' in iatts: oatts.append('POS')
+            if 'CAT_POS1' in iatts: oatts.append('POS1')
+            if 'CAT_VEL' in iatts: oatts.append('VEL')
+            if 'CAT_ACC' in iatts: oatts.append('ACC')
+            if 'CAT_JERK' in iatts: oatts.append('JERK')
+            if 'CAT_PERCENT' in iatts: oatts.append('PERCENT')
+            if 'CAT_TIME' in iatts: oatts.append('TIME')
             if len(oatts) > 0:
                 os += f" attr({','.join(oatts)})"
             os += f" {var}"
