@@ -200,7 +200,7 @@ public:
     void Tick();
 //    uint32_t SafetyBits();
     uint32_t GetError(uint32_t safety, uint8_t severity);
-    void SetError(uint32_t error, uint8_t severity) { Error = error; Severity = severity; }
+    void SetError(uint32_t error, uint8_t severity);
     void ResetError() { Fault = Error = Severity = 0; }
     uint8_t IsEnabled() { return RState & SM_ENABLE; }
     uint8_t IsPosLoopEnabled() { return (RState & SM_ENABLE) && (RState & SM_POSITIONLOOP); }

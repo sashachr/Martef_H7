@@ -66,7 +66,7 @@ void ServoStruct::Init(uint8_t index) {
     CurL = 50.F;
     PwmL = 80.0F;
     EncDiL = 0.05F;
-    PeL = 0.05F;
+    PeL = 0;
     NsL = -50; PsL = 50;
     OtL = 2; MtL = 0;
     VelF = 0.9;
@@ -78,6 +78,13 @@ uint32_t ServoStruct::GetError(uint32_t fault, uint8_t severity) {
     uint32_t f = fault & ((severity == 3) ? FaultDisable : (severity == 1) ? FaultKill : 0);
     for (int i=0, j=1; i<32; i++, j<<1) if (f & j) return errors[i];
     return FLT_UNKNOWN;
+}
+void ServoStruct::SetError(uint32_t error, uint8_t severity) { 
+    Error = error; Severity = severity; 
+    if (Severity > 0) {
+        SetSignalRout(0, 0);
+        RState &= ~1;
+    }
 }
 
 void ServoStruct::Tick() {
@@ -114,7 +121,7 @@ void ServoStruct::Tick() {
         RVel = 0;
     }
     ((uint16_t*)&PreFault)[1] = ((uint16_t*)&FState)[1];
-    Fault = PreFault & ~FaultMask;
+    Fault |= PreFault & ~FaultMask;
     uint32_t severity = (Fault & FaultDisable) ? 3 : (Fault & FaultKill) ? 1 : 0;
     if (severity > Severity) {
         SetError(GetError(Fault, severity), severity);
@@ -140,6 +147,7 @@ uint8_t ServoStruct::SetServoMode(uint32_t mode) {
     if (mode & SM_ENABLE) {
         if ((mode & (SM_POSITIONLOOP|SM_VELOCITYLOOP)) && !(RState & SM_COMMUTATION)) return MRE_NOCOMMUT;
     }
+    if (!(RState & SM_ENABLE) && (mode & SM_ENABLE)) SetError(0, 0);
     RState = (RState & ~(SM_POSITIONLOOP|SM_VELOCITYLOOP|SM_CURRENTLOOP|SM_PWM)) | mode;
     return 0;
 }
@@ -155,14 +163,16 @@ uint8_t ServoStruct::SetTPos(float pos) {
 
 const uint32_t romodes[] = { SM_POSITIONLOOP, SM_POSITIONLOOP, SM_VELOCITYLOOP, SM_VELOCITYLOOP, SM_CURRENTLOOP };
 uint8_t ServoStruct::SetSignalRout(uint8_t var, uint8_t rout) {
-    uint8_t r = SetServoMode(romodes[var-1] | SM_ENABLE);
-    if (r) return r;
     TPosRout = RPosRout = TVelRout = VInRout = CInRout = 0;
     TPosSource = RPosSource = TVelSource = VInSource = CInSource = 0;
-    uint8_t* const routs[] = { &TPosRout, &RPosRout, &TVelRout, &VInRout, &CInRout };
-    float** const sources[] = { &TPosSource, &RPosSource, &TVelSource, &VInSource, &CInSource };
-    *routs[var - 1] = rout;
-    *sources[var - 1] = GetSignalSource(rout);
+    if ((var > 0) && (rout > 0)) {
+        uint8_t r = SetServoMode(romodes[var-1] | SM_ENABLE);
+        if (r) return r;
+        uint8_t* const routs[] = { &TPosRout, &RPosRout, &TVelRout, &VInRout, &CInRout };
+        float** const sources[] = { &TPosSource, &RPosSource, &TVelSource, &VInSource, &CInSource };
+        *routs[var - 1] = rout;
+        *sources[var - 1] = GetSignalSource(rout);
+    }
     return 0;
 }
 float* ServoStruct::GetSignalSource(uint8_t ind) {
