@@ -89,8 +89,8 @@ void ServoStruct::SetError(uint32_t error, uint8_t severity) {
 
 void ServoStruct::Tick() {
     RPos4 = RPos3; RPos3 = RPos2; RPos2 = RPos1; RPos1 = RPos;
-    Pe = RPos4 - FPos;
-    float v = FPos1 - fpos1; 
+    Pe = RPos4 - ((RState & SM_FPOSROTARY) ? FPos1 : FPos);
+    float v = (RState & SM_FVELLINEAR) ? FPos - fpos : FPos1 - fpos1; 
     if (v > 180) v -= 360; else if (v < -180) v += 360;
     v *= TICKS_IN_SECOND;
     float fv = VelF * FFVel + (1.F-VelF) * v;
@@ -98,7 +98,7 @@ void ServoStruct::Tick() {
     	fv =  v;
     FAcc = (fv - FFVel) * TICKS_IN_SECOND;
     FVel = v; FFVel = fv;
-    fpos1 = FPos1; 
+    fpos = FPos; fpos1 = FPos1; 
     Ve = VIn + RVel - FVel;
     if (TPosSource) {
         if (IsEnabled()) SetTPos(*TPosSource); else { TPosRout = 0; TPosSource = 0; }

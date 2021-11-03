@@ -92,6 +92,8 @@ public:
 #define SM_VELOCITYLOOP     0x00000040
 #define SM_CURRENTLOOP      0x00000080
 #define SM_SETFPOS          0x00000100
+#define SM_FPOSROTARY       0x00000400
+#define SM_FVELLINEAR       0x00000800
 #define SM_INDEX            0x00001000
 #define SM_INDEX1           0x00002000
 #define SM_SIMULATION       0x00004000
@@ -218,7 +220,7 @@ public:
     void SetFpos(float pos);
 
 private:
-    float tpos, fpos1, fvel1;
+    float tpos, fpos, fpos1, fvel1;
     uint8_t enable;
 };
 
