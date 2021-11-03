@@ -117,8 +117,8 @@ void ServoStruct::Tick() {
             OperationCounter = floor(MtL * TICKS_IN_SECOND);
         }
     } else {
-        tpos = TPos = RPos = FPos;
-        RVel = 0;
+        tpos = TPos = RPos = (RState & SM_FPOSROTARY) ? FPos1 : FPos;
+        Pe = RVel = 0;
     }
     ((uint16_t*)&PreFault)[1] = ((uint16_t*)&FState)[1];
     Fault |= PreFault & ~FaultMask;
