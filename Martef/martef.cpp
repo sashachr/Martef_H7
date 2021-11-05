@@ -11,7 +11,6 @@
 #include "pmcuspi.h"
 #include "triggerscope.h"
 #include "siggen.h"
-#include "encoder.h"
 #include "motion.h"
 #include "servo.h"
 #include "io.h"
@@ -26,7 +25,6 @@ void MartefInit() {
     CommunicationInit();
     CommandInit();
     Io.Init();
-    Encoder.Init();
     MotionInit();
     ServoInit();
     Adc.Init();

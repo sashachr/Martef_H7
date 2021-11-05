@@ -9,7 +9,6 @@
 #include <new>
 
 #include "global.h"     // DSP280x Headerfile Include File
-#include "encoder.h"
 #include "servo.h"
 #include "motion.h"
 

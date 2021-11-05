@@ -4,7 +4,6 @@
 #include "martef.h"
 #include "timer.h"
 #include "adc.h"
-#include "encoder.h"
 #include "servo.h"
 #include "pmcuspi.h"
 
@@ -14,10 +13,10 @@ typedef void (*SetServoVar)(ServoStruct* s, float v);
 
 // Servo Parameters
 const uint32_t ServoPars[] = {
-/*  0 ENR       */ (uint8_t*)&Servo[0].REncoder.Resolution - (uint8_t*)&Servo[0],
-/*  1 ENR1      */ (uint8_t*)&Servo[0].LEncoder.Resolution - (uint8_t*)&Servo[0],
-/*  2 ENOFF     */ (uint8_t*)&Servo[0].REncoder.Offset - (uint8_t*)&Servo[0],
-/*  3 ENOFF1    */ (uint8_t*)&Servo[0].LEncoder.Offset - (uint8_t*)&Servo[0],
+/*  0 ENR       */ (uint8_t*)&Servo[0].RResolution - (uint8_t*)&Servo[0],
+/*  1 ENR1      */ (uint8_t*)&Servo[0].LResolution - (uint8_t*)&Servo[0],
+/*  2 ENOFF     */ 0,
+/*  3 ENOFF1    */ 0,
 /*  4 ENDL      */ (uint8_t*)&Servo[0].EncDiL - (uint8_t*)&Servo[0],
 /*  5 PEL       */ (uint8_t*)&Servo[0].PeL - (uint8_t*)&Servo[0],
 /*  6 PKP       */ (uint8_t*)&Servo[0].Ploop.Pi.Kp - (uint8_t*)&Servo[0],
@@ -49,7 +48,7 @@ const uint32_t ServoPars[] = {
 /* 32 BQ2B2     */ (uint8_t*)&Servo[0].Vloop.Bq[2].B2 - (uint8_t*)&Servo[0],
 /* 33 CURL      */ (uint8_t*)&Servo[0].CurL - (uint8_t*)&Servo[0],
 /* 34 PWML      */ (uint8_t*)&Servo[0].PwmL - (uint8_t*)&Servo[0],
-/* 35 COMP      */ (uint8_t*)&Servo[0].Commut.Period - (uint8_t*)&Servo[0],
+/* 35 COMP      */ (uint8_t*)&Servo[0].CommutPeriod - (uint8_t*)&Servo[0],
 /* 37           */ 0,
 /* 36           */ 0,
 /* 38           */ 0,

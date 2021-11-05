@@ -8,7 +8,6 @@
 
 #include "global.h"
 #include "adc.h"
-#include "encoder.h"
 #include "siggen.h"
 #include "motion.h"
 #include "servo.h"
@@ -56,10 +55,11 @@ void ServoStruct::Init(uint8_t index) {
     Motion = NewMotion(index);
     InitialCounter = 1000;
     Vel = 3600; Acc = 36000; Dec = 36000; KDec = 36000; Jerk = 360000;
-    REncoder.Resolution = 360.F/4096.F; LEncoder.Resolution = 360.F/4096.F;
-    Commut.Period = 4096;
+    RResolution = 5.6340E-5F; 
+    LResolution = 0.001171875F;
+    CommutPeriod = 4096;
     Ploop.Pi.Kp = 50; Ploop.Pi.Ki = 0; Ploop.Pi.Li = 0;
-    Vloop.Pi.Kp = 0.2; Vloop.Pi.Ki = 150; Vloop.Pi.Li = 60;
+    Vloop.Pi.Kp = 500; Vloop.Pi.Ki = 150; Vloop.Pi.Li = 60;
     Cdloop.Pi.Kp = Cqloop.Pi.Kp = 0.2; Cdloop.Pi.Ki = Cqloop.Pi.Ki = 1000; Cdloop.Pi.Li = Cqloop.Pi.Li = 80;
     float bq[] = {100.0F, 0.7F};    // Bandwidth 700 Hz, Damping 0.7
     for (int i = 0; i < 4; i++) Vloop.Bq[i].Config(BQ_LPF, bq); 
@@ -91,13 +91,10 @@ void ServoStruct::Tick() {
     RPos4 = RPos3; RPos3 = RPos2; RPos2 = RPos1; RPos1 = RPos;
     Pe = RPos4 - ((RState & SM_FPOSROTARY) ? FPos1 : FPos);
     float v = (RState & SM_FVELLINEAR) ? FPos - fpos : FPos1 - fpos1; 
-    if (v > 180) v -= 360; else if (v < -180) v += 360;
-    v *= TICKS_IN_SECOND;
-    float fv = VelF * FFVel + (1.F-VelF) * v;
-    if (IsNan(fv))
-    	fv =  v;
+    FVel = v * TICKS_IN_SECOND;
+    float fv = IsNan(FFVel) ? FVel : VelF * FFVel + (1.F-VelF) * FVel;
     FAcc = (fv - FFVel) * TICKS_IN_SECOND;
-    FVel = v; FFVel = fv;
+    FFVel = fv;
     fpos = FPos; fpos1 = FPos1; 
     Ve = VIn + RVel - FVel;
     if (TPosSource) {
@@ -180,7 +177,7 @@ float* ServoStruct::GetSignalSource(uint8_t ind) {
 }
 
 void ServoStruct::SetFpos(float pos) {
-    FPos = FPos1 = fpos1 = pos;
+    FPos = FPos1 = fpos = fpos1 = pos;
     RState |= SM_SETFPOS;
 }
 

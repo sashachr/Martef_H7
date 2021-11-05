@@ -7,7 +7,6 @@
 
 #include "global.h"
 #include "motion.h"
-#include "encoder.h"
 #include "servo.h"
 #include "io.h"
 #include "timer.h"

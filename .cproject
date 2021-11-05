@@ -89,7 +89,7 @@
 					<sourceEntries>
 						<entry flags="VALUE_WORKSPACE_PATH|RESOLVED" kind="sourcePath" name="Drivers"/>
 						<entry flags="VALUE_WORKSPACE_PATH|RESOLVED" kind="sourcePath" name="Main"/>
-						<entry flags="VALUE_WORKSPACE_PATH" kind="sourcePath" name="Martef"/>
+						<entry excluding="encoder.h|encoder.cpp" flags="VALUE_WORKSPACE_PATH|RESOLVED" kind="sourcePath" name="Martef"/>
 					</sourceEntries>
 				</configuration>
 			</storageModule>
@@ -207,6 +207,7 @@
 		</scannerConfigBuildInfo>
 	</storageModule>
 	<storageModule moduleId="refreshScope" versionNumber="2">
+		<configuration configurationName="BootDebug"/>
 		<configuration configurationName="Debug">
 			<resource resourceType="PROJECT" workspacePath="/MartefH7"/>
 		</configuration>
