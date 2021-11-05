@@ -18,6 +18,7 @@
 #include "systick.h"
 #include "command.h"
 #include "timer.h"
+#include "flash.h"
 #include "martef.h"
 
 void MartefInit() {
@@ -31,6 +32,7 @@ void MartefInit() {
     Scope.Init();
     PmcuSpiInit();
 	ThreadsInit();
+    FlashGetInitArea();
 	SysTickInit();
 	PinsInit();
 }

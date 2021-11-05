@@ -18,6 +18,7 @@
 #include "communication.h"
 #include "triggerscope.h"
 #include "siggen.h"
+#include "flash.h"
 //#include "Martel.h"
 #include "martef.h"
 #include "sysvar.h"
