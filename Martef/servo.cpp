@@ -62,7 +62,10 @@ void ServoStruct::Init(uint8_t index) {
     Vloop.Pi.Kp = 500; Vloop.Pi.Ki = 150; Vloop.Pi.Li = 60;
     Cdloop.Pi.Kp = Cqloop.Pi.Kp = 0.2; Cdloop.Pi.Ki = Cqloop.Pi.Ki = 1000; Cdloop.Pi.Li = Cqloop.Pi.Li = 80;
     float bq[] = {100.0F, 0.7F};    // Bandwidth 700 Hz, Damping 0.7
-    for (int i = 0; i < 4; i++) Vloop.Bq[i].Config(BQ_LPF, bq); 
+    for (int i = 0; i < 4; i++) {
+    	Vloop.Bq[i].P0 = 700.F; Vloop.Bq[i].P1 = 0.7F;
+    	Vloop.Bq[i].Config(0);
+    }
     CurL = 50.F;
     PwmL = 80.0F;
     EncDiL = 0.05F;

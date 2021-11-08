@@ -221,6 +221,18 @@ int32_t FlashSave(uint16_t ind, int16_t count, uint32_t* buf) {
         for (; (i < count) && (j < NAX); i++,j++,buf++) Servo[i].SetFpos(*(float*)buf); \
         return i; \
     }
+#define WriteBqMode(bqn) \
+    [](uint16_t ind, uint16_t count, int32_t* buf) -> int32_t {  \
+        int16_t i = 0, j = ind; \
+        for (; (i < count) && (j < NAX); i++,j++,buf++) Servo[i].Vloop.Bq[bqn].Config(*(int*)buf);  \
+        return i; \
+    }
+#define WriteBqRaw(bqn, par) \
+    [](uint16_t ind, uint16_t count, int32_t* buf) -> int32_t {  \
+        int16_t i = 0, j = ind; \
+        for (; (i < count) && (j < NAX); i++,j++,buf++) { Servo[i].Vloop.Bq[bqn].par = (*(float*)buf); Servo[i].Vloop.Bq[bqn].Mode = 3;} \
+        return i; \
+    }
 
 Vardef SysVars[nSysVars] = {
     #include "sysvar.inc"

@@ -33,18 +33,13 @@
 .global  g_pfnVectors
 .global  Default_Handler
 
-/* start address for the initialization values of the .data section.
-defined in linker script */
-.word  _sidata
-/* start address for the .data section. defined in linker script */
-.word  _sdata
-/* end address for the .data section. defined in linker script */
-.word  _edata
-/* start address for the .bss section. defined in linker script */
-.word  _sbss
-/* end address for the .bss section. defined in linker script */
-.word  _ebss
-/* stack used for SystemInit_ExtMemCtl; always internal RAM used */
+/* start address for the initialization values of the .data section. defined in linker script */
+.word  _sidata /* start address for the .data section. defined in linker script */
+.word  _sdata  /* end address for the .data section. defined in linker script */
+.word  _edata  /* start address for the .bss section. defined in linker script */
+.word  _sbss   /* end address for the .bss section. defined in linker script */
+.word  _ebss   /* stack used for SystemInit_ExtMemCtl; always internal RAM used */
+.word _siramD1init  /* defined in linker script, should contain Product Guid */
 
 /**
  * @brief  This is the code that gets called when the processor first
@@ -311,6 +306,7 @@ g_pfnVectors:
   .word     FDCAN3_IT1_IRQHandler             /* FDCAN3 interrupt line 1  */
   .word     TIM23_IRQHandler                  /* TIM23 global interrupt   */
   .word     TIM24_IRQHandler                  /* TIM24 global interrupt   */
+  .word     _siramD1init                      /* Product Guid             */
 
 /*******************************************************************************
 *

@@ -37,16 +37,17 @@ public:
 };
 
 // Biquad modes
-#define BQ_RAW      0
-#define BQ_LPF      1
-#define BQ_NOTCH    2
-#define BQ_FULL     3
+#define BQ_LPF      0
+#define BQ_NOTCH    1
+#define BQ_FULL     2
+#define BQ_RAW      10
 
 class BiQuadStruct : public FilterStruct {
 public:
     uint32_t Mode;
     float S1, S2;
-    float A1, A2, B0, B1, B2;      
+    float A1, A2, B0, B1, B2; 
+    float P0, P1, P2, P3, P4;     
 
     BiQuadStruct() {Enable = Mode = 0; S1 = S2 = 0;}
 
@@ -59,18 +60,17 @@ public:
             S2 = S1;
             S1 = s0;
         } else {
-            Out = In;
+            Out = S1 = S2 = In;
         }
     }
     int32_t Config(float* p) {A1 = p[0]; A2 = p[1]; B0 = p[2]; B1 = p[3]; B2 = p[4]; Reset(); return 1;}
-    int32_t Config(int mode, float* p) {
-        if ((mode<0)||(mode>3)) return 0;
+    int32_t Config(int mode) {
         Mode = mode;
-        switch (mode) {
-            case BQ_RAW: Config(p); break;
-            case BQ_LPF: {
-                float bandwidth = p[0];
-                float damping = p[1];
+        if ((Mode < 0) || (Mode > 2)) return 0;
+        switch (Mode) {
+            case 0: {       // Low-pass
+                float bandwidth = P0;
+                float damping = P1;
                 float om = 2*F_PI*bandwidth*SECONDS_IN_TICK;
                 float a0 = 4 + 4*damping*om + om*om;
                 A1 = (-8 + 2*om*om)/a0;   
@@ -80,10 +80,10 @@ public:
                 B2 = B0;          
                 break;
             }
-            case BQ_NOTCH: {
-                float res = p[0];
-                float width = p[1];
-                float att = p[2];
+            case 1: {       // Notch
+                float res = P0;
+                float width = P1;
+                float att = P2;
                 float q = res / width;
                 float om = 2*F_PI*res*SECONDS_IN_TICK;
                 float a0 = 4 + 2*att/q*om + om*om;
@@ -94,11 +94,11 @@ public:
                 B2 = (4 - 2/q*om + om*om)/a0; 
                 break;
             }
-            case BQ_FULL: {
-                float fp = p[0];
-                float dp = p[1];
-                float fz = p[2];
-                float dz = p[3];
+            case 2: {       // Full
+                float fp = P0;
+                float dp = P1;
+                float fz = P2;
+                float dz = P3;
                 float omp = 2*F_PI*fp*SECONDS_IN_TICK;
                 float omz = 2*F_PI*fz*SECONDS_IN_TICK;
                 float k = (omp*omp)/(omz*omz);

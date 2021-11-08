@@ -189,6 +189,7 @@ SECTIONS
   {
     . = ALIGN(4);
     _sramD1init = .;
+    *(.guidProduct)
     *(.ramD1init)
     . = ALIGN(4);
     _eramD1init = .;

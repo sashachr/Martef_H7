@@ -7,7 +7,7 @@
 
 #include "global.h"
 #include "sysvar.h"
-//#include "martel.h"
+#include "flash.h"
 #include "gitversion.h"
 #include "communication.h"
 #include "command.h"
@@ -63,7 +63,7 @@ __attribute__((section(".ramD2init"))) uint8_t CdfString[] =
 ;
 __attribute__((section(".ramD1init"))) static uint8_t emptystring[1] = { 0 };
 #define nguids 5
-__attribute__((section(".ramD1init"))) GUID GuidProduct = { 0xc7d043ae, 0x7161, 0x4b5b, { 0xb3, 0xc0, 0x72, 0x1, 0xc8, 0x6d, 0x9c, 0x1 } }; // {C7D043AE-7161-4B5B-B3C0-7201C86D9C01}
+__attribute__((section(".guidProduct"))) GUID GuidProduct = { 0x6729d920, 0xcb01, 0x4119, { 0x90, 0x5e, 0xc5, 0x55, 0x2b, 0xea, 0x14, 0x1c } }; // {6729D920-CB01-4119-905E-C5552BEA141C}
 __attribute__((section(".ramD1init"))) GUID GuidManufacturer = { 0xebb27f3b, 0x758f, 0x4dbe, { 0x94, 0x93, 0x4, 0x9f, 0xec, 0x2e, 0x8f, 0x22 } };  // {EBB27F3B-758F-4DBE-9493-049FEC2E8F22}
 __attribute__((section(".ramD1"))) GUID GuidUnit;
 __attribute__((section(".ramD1init"))) GUID GuidFwVersion { 0, 0, 0, { 0, 0, 0, 0, 0, 0, 0, 0 } };
@@ -278,34 +278,34 @@ void FdProtocol(uint8_t* buf, uint16_t count, CommChannel* ch) {
             break;
 		}
 		case MRC_UPGRADE: {
-			// if (clen < 8) BREAK(MRE_FORMAT)
-            // if (FlashIsLocked()) BREAK(MRE_FLASHLOCKED)
-			// uint32_t op = *(uint16_t*)(buf+6), ind = *(uint16_t*)(buf+8), count = *(uint16_t*)(buf+10);
-			// if ((count<<2) > PROGRAM_BLOCK) BREAK(MRE_FORMAT)
-            // switch (op) {
-            //     case 1:    // Erase
-        	// 		if (clen != 12) BREAK(MRE_FORMAT)
-            //         if (ind+count > 3) BREAK(MRE_ILLEGALINDEX)
-            //         for (int i=0; i<count; i++) if (FlashUpgradeErase(ind+i) != 0) BREAK(MRE_FLASHERASEFAILED)
-            //         break;
-            //     case 2:     // Write
-        	// 		if (clen != 12+(count<<2)) BREAK(MRE_FORMAT)
-            //         if (FlashUpgradeWrite(ind<<6, (uint32_t*)(buf+12), count<<2) != 0) BREAK(MRE_FLASHWRITEFAILED)
-            //         break;
-            //     case 3:     // Validate
-        	// 		if (clen != 20) BREAK(MRE_FORMAT)
-            //         if ((ind != 0) || (count != 2)) BREAK(MRE_ILLEGALINDEX)
-            //         if (FlashUpgradeInfo((uint32_t*)(buf+12)) != 0) BREAK(MRE_FLASHWRITEFAILED)
-            //         if (FlashValidateUpgrade()) BREAK(MRE_FLASHCHECKSUM)
-            //         break;
-            //     case 4:     // Invalidate firmware and restart
-        	// 		if ((clen != 12) || (ind != 0) || (count != 0)) BREAK(MRE_FORMAT)
-            //         if (FlashDiscardFirmware() != 0) BREAK(MRE_FLASHWRITEFAILED)
-            //         SysRestart();
-            //         break;
-            //     default:
-            //         BREAK(MRE_ILLEGALCOMMAND)
-            // }
+			if (clen < 8) BREAK(MRE_FORMAT)
+            if (FlashIsLocked()) BREAK(MRE_FLASHLOCKED)
+			uint32_t op = *(uint16_t*)(buf+6), ind = *(uint16_t*)(buf+8), count = *(uint16_t*)(buf+10);
+			if ((count<<2) > PROGRAM_BLOCK) BREAK(MRE_FORMAT)
+            switch (op) {
+                case 1:    // Erase
+        			if (clen != 12) BREAK(MRE_FORMAT)
+                    if (ind+count > 3) BREAK(MRE_ILLEGALINDEX)
+                    for (int i=0; i<count; i++) if (FlashUpgradeErase(ind+i) != 0) BREAK(MRE_FLASHERASEFAILED)
+                    break;
+                case 2:     // Write
+        			if (clen != 12+(count<<2)) BREAK(MRE_FORMAT)
+                    if (FlashUpgradeWrite(ind<<6, (uint32_t*)(buf+12), count<<2) != 0) BREAK(MRE_FLASHWRITEFAILED)
+                    break;
+                case 3:     // Validate
+        			if (clen != 20) BREAK(MRE_FORMAT)
+                    if ((ind != 0) || (count != 2)) BREAK(MRE_ILLEGALINDEX)
+                    if (FlashUpgradeInfo((uint32_t*)(buf+12)) != 0) BREAK(MRE_FLASHWRITEFAILED)
+                    if (FlashValidateUpgrade()) BREAK(MRE_FLASHCHECKSUM)
+                    break;
+                case 4:     // Invalidate firmware and restart
+        			if ((clen != 12) || (ind != 0) || (count != 0)) BREAK(MRE_FORMAT)
+                    if (FlashDiscardFirmware() != 0) BREAK(MRE_FLASHWRITEFAILED)
+                    SysRestart();
+                    break;
+                default:
+                    BREAK(MRE_ILLEGALCOMMAND)
+            }
 			break;
 		}
 		case MRC_FUNCTION: {
