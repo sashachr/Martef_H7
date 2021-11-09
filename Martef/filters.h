@@ -47,6 +47,7 @@ public:
     uint32_t Mode;
     float S1, S2;
     float A1, A2, B0, B1, B2; 
+    float sA1, sA2, sB0, sB1, sB2;  // Shadow values - depend on enabl/disable
     float P0, P1, P2, P3, P4;     
 
     BiQuadStruct() {Enable = Mode = 0; S1 = S2 = 0;}
@@ -61,6 +62,13 @@ public:
             S1 = s0;
         } else {
             Out = S1 = S2 = In;
+        }
+    }
+    void SetShadow() {
+        if (Enable) {
+            sA1 = A1; sA2 = A2; sB0 = B0; sB1 = B1; sB2 = B2;
+        } else {
+            sA1 = sA2 = sB1 = sB2 = 0; sB0 = 1; 
         }
     }
     int32_t Config(float* p) {A1 = p[0]; A2 = p[1]; B0 = p[2]; B1 = p[3]; B2 = p[4]; Reset(); return 1;}
@@ -78,6 +86,7 @@ public:
                 B0 = om*om/a0;          
                 B1 = 2*B0;      
                 B2 = B0;          
+                SetShadow();
                 break;
             }
             case 1: {       // Notch
@@ -92,6 +101,7 @@ public:
                 B0 = (4 + 2/q*om + om*om)/a0;    
                 B1 = (-8 + 2*om*om)/a0;       
                 B2 = (4 - 2/q*om + om*om)/a0; 
+                SetShadow();
                 break;
             }
             case 2: {       // Full
@@ -108,6 +118,7 @@ public:
                 B0 = (4 + 4*dz*omz + omz*omz)/a0*k;
                 B1 = (-8 + 2*omz*omz)/a0*k;
                 B2 = (4 - 4*dz*omz + omz*omz)/a0*k;  
+                SetShadow();
                 break;
             }
         }
