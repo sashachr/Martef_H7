@@ -180,7 +180,7 @@ float* ServoStruct::GetSignalSource(uint8_t ind) {
 }
 
 void ServoStruct::SetFpos(float pos) {
-    FPos = FPos1 = fpos = fpos1 = pos;
+    TPos = tpos = RPos = FPos = FPos1 = fpos = fpos1 = pos;
     RState |= SM_SETFPOS;
 }
 

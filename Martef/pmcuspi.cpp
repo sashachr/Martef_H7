@@ -149,7 +149,7 @@ void PmcuSpi::TickEnd() {
 }
 
 void PmcuSpi::DecipherReport(uint32_t* buf) {
-	if (servo->Index != 0) return;
+	if (servo->Index != 1) return;
     servo->FState = buf[0];
     servo->FPos = *(float*)(buf+1);
     servo->FPos1 = *(float*)(buf+2);
@@ -199,7 +199,7 @@ void PmcuSpiTickEnd() {
 }
 
 void PmcuSpiInit() {
-    pmcu[0].Init(0, 5, 4); pmcu[1].Init(1, 4, 6);
+    pmcu[0].Init(0, 4, 4); pmcu[1].Init(1, 5, 6);
 //    spiOutBuf[0][0] = 0xA0A0;
 //    spiOutBuf[1][0] = 0xA0A0;
 //    for (int i=1; i<10; i++) {

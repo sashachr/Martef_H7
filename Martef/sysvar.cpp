@@ -212,31 +212,31 @@ int32_t FlashSave(uint16_t ind, int16_t count, uint32_t* buf) {
 #define WriteSignalRout(var) \
     [](uint16_t ind, uint16_t count, int32_t* buf) -> int32_t {  \
         int16_t i = 0, j = ind; \
-        for (; (i < count) && (j < NAX); i++,j++,buf++) Servo[i].SetSignalRout(var, (uint8_t)*buf); \
+        for (; (i < count) && (j < NAX); i++,j++,buf++) Servo[j].SetSignalRout(var, (uint8_t)*buf); \
         return i; \
     }
 #define WriteFpos \
     [](uint16_t ind, uint16_t count, int32_t* buf) -> int32_t {  \
         int16_t i = 0, j = ind; \
-        for (; (i < count) && (j < NAX); i++,j++,buf++) Servo[i].SetFpos(*(float*)buf); \
+        for (; (i < count) && (j < NAX); i++,j++,buf++) Servo[j].SetFpos(*(float*)buf); \
         return i; \
     }
 #define WriteBqEnable(bqn) \
     [](uint16_t ind, uint16_t count, int32_t* buf) -> int32_t {  \
         int16_t i = 0, j = ind; \
-        for (; (i < count) && (j < NAX); i++,j++,buf++) { Servo[i].Vloop.Bq[bqn].Enable = *buf != 0; Servo[i].Vloop.Bq[bqn].SetShadow(); } \
+        for (; (i < count) && (j < NAX); i++,j++,buf++) { Servo[j].Vloop.Bq[bqn].Enable = *buf != 0; Servo[j].Vloop.Bq[bqn].SetShadow(); } \
         return i; \
     }
 #define WriteBqMode(bqn) \
     [](uint16_t ind, uint16_t count, int32_t* buf) -> int32_t {  \
         int16_t i = 0, j = ind; \
-        for (; (i < count) && (j < NAX); i++,j++,buf++) Servo[i].Vloop.Bq[bqn].Config(*(int*)buf);  \
+        for (; (i < count) && (j < NAX); i++,j++,buf++) Servo[j].Vloop.Bq[bqn].Config(*(int*)buf);  \
         return i; \
     }
 #define WriteBqRaw(bqn, par) \
     [](uint16_t ind, uint16_t count, int32_t* buf) -> int32_t {  \
         int16_t i = 0, j = ind; \
-        for (; (i < count) && (j < NAX); i++,j++,buf++) { Servo[i].Vloop.Bq[bqn].par = (*(float*)buf); if (Servo[i].Vloop.Bq[bqn].Enable) Servo[i].Vloop.Bq[bqn].s ## par = (*(float*)buf); Servo[i].Vloop.Bq[bqn].Mode = 3;} \
+        for (; (i < count) && (j < NAX); i++,j++,buf++) { Servo[j].Vloop.Bq[bqn].par = (*(float*)buf); if (Servo[j].Vloop.Bq[bqn].Enable) Servo[j].Vloop.Bq[bqn].s ## par = (*(float*)buf); Servo[j].Vloop.Bq[bqn].Mode = 3;} \
         return i; \
     }
 
