@@ -54,7 +54,7 @@ void ServoStruct::Init(uint8_t index) {
     Index = index;
     Motion = NewMotion(index);
     InitialCounter = 1000;
-    Vel = 3600; Acc = 36000; Dec = 36000; KDec = 36000; Jerk = 360000;
+    Vel = 10.F; Acc = 100.F; Dec = 100.F; KDec = 100.F; Jerk = 1000.F;
     RResolution = 5.6340E-5F; 
     LResolution = 0.001171875F;
     CommutPeriod = 4096;
