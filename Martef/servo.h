@@ -184,7 +184,7 @@ public:
     float OtL, MtL;                     // Maximal time of open-loop operation and single motion
     float Teta;                         // Commutation angle
     float RResolution, LResolution;     // Resolution of rotary and linear encoders
-    uint32_t CommutPeriod;                // Commutation period in rotary encoder counts
+    uint32_t CommutPeriod;              // Commutation period in rotary encoder counts
 
     uint8_t TPosRout, RPosRout, TVelRout, VInRout, CInRout;
     float *TPosSource, *RPosSource, *TVelSource, *VInSource, *CInSource;

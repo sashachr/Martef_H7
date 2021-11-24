@@ -43,6 +43,7 @@ void MartefTick() {
     TimeTickStart();
     if (!Time.initialDelayCount) {
         PmcuSpiTickStart();
+        MotionTick();
         ServoTick();
 //        Dac.Tick();
 //        LedStatus.Tick();

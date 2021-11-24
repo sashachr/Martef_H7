@@ -16,23 +16,30 @@
 
 class MotionBase {
 public:
-	float Vel, Acc, Dec, KDec, Jerk;
+	uint32_t ax;				// Bitwise specification of related axes
+	uint8_t iax[NAX];			// Related axes
+	uint8_t nax;				// Number of related axes
+	uint8_t index;				// Index in Motion array
+	uint8_t group;				// Index of the group
+	float TPos;					// Target position
+	float MVel, MAcc, MJerk; 	// Motion parameters
+	float MTv, MTa, MTj;		// Parameters for time-based motion
 	float RPos, RVel, RAcc, RJerk;
 	float time;
 	uint16_t phase;
 	uint16_t type;
 	uint16_t VelocityProfileMode;
-	MotionBase() {time = 0; phase = 0; type = M_NONE;} 
-	MotionBase(uint16_t Type) {time = 0; type = Type;}
-	MotionBase(float vel, float acc, float dec, float kdec) {
-		Vel = vel; Acc = acc; Dec = dec; KDec = kdec;
-		RPos = 0; RVel = 0; RAcc = 0; RJerk = 0;
-		time = 0; phase = 0;
-		type = M_NONE;
-	}
+	MotionBase() {type = M_NONE;} 
+	MotionBase(uint16_t Type) {type = Type;}
+	void Init(int i);
+	void Reset();
+	void Group(int32_t gr);
 	virtual void Tick() {}
 	virtual void Kill();
 	virtual void Stop(); 
+	virtual void Next() {}
+
+	float tpos;	
 };
 
 struct TrapezoidalMotionSegment {
@@ -121,8 +128,18 @@ public:
 	virtual void Kill();
 };
 
+class TBlended : public MotionBase {		// Time-bases blended motion 
+public:
+	float tp0[NAX], tp1[NAX], tp2[NAX];		// Start, intermediate and final points
+	float p1, p2;		// Segments lengths
+	TrapezoidalMotion m;
+	TBlended() {}
+	virtual void Tick();
+	virtual void Kill();
+};
+
 extern struct TableMotionDef TableMotions[1];
-extern Arc2Motion Motions[NAX];
+extern Arc2Motion Motion[NAX];
 
 void StartOneAxisMotion(MotionBase* M, float p1, float v1);
 
@@ -132,7 +149,9 @@ void StartArc2Motion(float t0, float t1, float c0, float c1, int d);
 
 //void MotionTick(MotionStruct& M);
 
-void MotionInit();
+MotionBase* DefaultMotion(int i);
 
-MotionBase* NewMotion(int i);
+void MotionInit();
+inline void MotionTick() { for (int i = 0; i < NAX; i++) Motion[i].Tick(); }
+
 

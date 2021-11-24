@@ -52,9 +52,9 @@ uint32_t errors[33] = {
 
 void ServoStruct::Init(uint8_t index) {
     Index = index;
-    Motion = NewMotion(index);
+    Motion = DefaultMotion(index);
     InitialCounter = 1000;
-    Vel = 10.F; Acc = 100.F; Dec = 100.F; KDec = 100.F; Jerk = 1000.F;
+    Vel = 10.F; Acc = 100.F; Dec = 100.F; KDec = 100.F; Jerk = 10000.F;
     RResolution = 5.6340E-5F; 
     LResolution = 0.001171875F;
     CommutPeriod = 4096;
@@ -109,12 +109,12 @@ void ServoStruct::Tick() {
     }
     if (IsPosLoopEnabled()) {
         if (tpos != TPos) {
-            tpos = TPos;
-            Motion->Vel = Vel; Motion->Acc = Acc; Motion->Dec = Dec; Motion->Jerk = Jerk;
-            Motion->RPos = RPos; Motion->RVel = RVel;
-            new(Motion) TrapezoidalMotion(tpos, 0);
-            RState |= SM_ENABLE|SM_POSITIONLOOP|SM_MOTION;
-            OperationCounter = floor(MtL * TICKS_IN_SECOND);
+            // tpos = TPos;
+            // Motion->Vel = Vel; Motion->Acc = Acc; Motion->Dec = Dec; Motion->Jerk = Jerk;
+            // Motion->RPos = RPos; Motion->RVel = RVel;
+            // new(Motion) TrapezoidalMotion(tpos, 0);
+            // RState |= SM_ENABLE|SM_POSITIONLOOP|SM_MOTION;
+            // OperationCounter = floor(MtL * TICKS_IN_SECOND);
         }
     } else {
         tpos = TPos = RPos = (RState & SM_FPOSROTARY) ? FPos1 : FPos;
