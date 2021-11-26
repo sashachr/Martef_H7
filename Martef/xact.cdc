@@ -50,6 +50,7 @@
 "float attr(VEL) GTA[NAX] @144;\n"
 "float attr(VEL) GTJ[NAX] @145;\n"
 "int attr(PROPWRITE,VEL) GAXES[NAX] @150;\n"
+"int attr(PROPWRITE,VEL) MTYPE[NAX] @151;\n"
 "float attr(FLASH) VELF[NAX] @179;\n"
 "float attr(FLASH,POS) ENDIL[NAX] @180;\n"
 "float attr(FLASH,POS) PEL[NAX] @181;\n"

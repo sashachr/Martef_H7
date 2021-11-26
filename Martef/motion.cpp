@@ -73,12 +73,13 @@ float FastCubicRoot(float x) {
 }
 
 void MotionBase::Init(int i) {
+	Index = i;
 	time = 0; phase = 0; 
 	MVel = 10; MAcc = 100; MJerk = 10000;
 	MTv = 500; MTa = 50; MTj = 10;
 	SetType(M_DEFAULT);
 }
-void MotionBase::SetType(int type) {
+void MotionBase::SetType(int32_t type) {
 	Type = type;
 	switch (type) {
 		case M_TRAPEZOIDAL: new(this) TrapezoidalMotion(); break;
@@ -98,6 +99,8 @@ void MotionBase::Stop() {
 }
 
 void TrapezoidalMotion::Calculate(float p0, float v0, float p1, float v1) {
+    P0 = p0; V0 = v0; P1 = p1; V1 = v1; 
+	D = P1 - P0;
 	float S0 = v0 * fabsf(v0) / MAcc * 0.5F;
 	float VT = (S0 > D)? -MVel : MVel;
 	float A1 = (v0 > VT)? -MAcc : MAcc;
@@ -110,7 +113,7 @@ void TrapezoidalMotion::Calculate(float p0, float v0, float p1, float v1) {
 	float T2;
 	if ((S2==0) || ((S2>0)==(VT>0))) {
 		T2 = S2/VT;
-		} else {
+	} else {
 		float VT1 = v0 * v0 * 0.5F + A1 * D;
 		VT1 = (VT1 > 0)? sqrtf(VT1) : 0;
 		VT = (VT > 0)? VT1 : -VT1;
@@ -127,9 +130,10 @@ void TrapezoidalMotion::Calculate(float p0, float v0, float p1, float v1) {
 	Seg[0].Acc = A1; Seg[1].Acc = 0.0F; Seg[2].Acc = A3;
 	Seg[0].Vel = v0; Seg[1].Vel = Seg[2].Vel = VT;
 	Seg[0].Pos = p0; Seg[1].Pos = p0+S1; Seg[2].Pos = Seg[1].Pos+S2;
-	RAcc = Seg[0].Acc;
+	RPos = Seg[0].Pos; RVel = Seg[0].Vel; RAcc = Seg[0].Acc; RJerk = 0;
 	CurSegment = &Seg[0];
 	phase = 1;
+	Servo->StartMotion();
 }
 
 // TrapezoidalMotion::TrapezoidalMotion(float p1) : MotionBase (Motion[0].MVel, Motion[0].MAcc, Motion[0].MAcc, Motion[0].MAcc) {
@@ -140,7 +144,8 @@ void TrapezoidalMotion::Calculate(float p0, float v0, float p1, float v1) {
 void TrapezoidalMotion::Tick() {
 	if (Servo->TPosChanged()) {
 		if (Servo->ValidatePositionLoop()) {
-			Calculate(Servo->RPos, Servo->RVel, Servo->TPos, 0);
+			Servo->GroupGetTPos(TPos);
+			Calculate(Servo->RPos, Servo->RVel, TPos[0], 0);
 		}
 	}
 	if (phase != 0) {
@@ -160,8 +165,8 @@ void TrapezoidalMotion::Tick() {
 				} else {	// Motion finished
 					RPos = P1;
 					RVel = RAcc = 0;
-					new(this) MotionBase();
 					phase = 0;
+					Servo->EndMotion();
 					break;
 				}
 			}

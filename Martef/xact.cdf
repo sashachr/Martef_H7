@@ -50,6 +50,7 @@ float attr(VEL) GTV[NAX] @143;
 float attr(VEL) GTA[NAX] @144;
 float attr(VEL) GTJ[NAX] @145;
 int attr(PROPWRITE,VEL) GAXES[NAX] @150;
+int attr(PROPWRITE,VEL) MTYPE[NAX] @151;
 float attr(FLASH) VELF[NAX] @179;
 float attr(FLASH,POS) ENDIL[NAX] @180;
 float attr(FLASH,POS) PEL[NAX] @181;

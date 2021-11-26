@@ -22,8 +22,8 @@ class ServoStruct;
 class MotionBase {
 public:
 	uint8_t Index;				// Index in Motion array
-	uint16_t Type;
-	float TPos;					// Target position
+	int32_t Type;
+	float TPos[NAX];					// Target position
 	float MVel, MAcc, MJerk; 	// Motion parameters
 	float MTv, MTa, MTj;		// Parameters for time-based motion
 	float RPos, RVel, RAcc, RJerk;
@@ -32,13 +32,11 @@ public:
 	ServoStruct* Servo;
 	MotionBase() {} 
 	void Init(int i);
-	void SetType(int type);
+	void SetType(int32_t type);
 	virtual void Tick() {}
 	virtual void Kill();
 	virtual void Stop(); 
 	virtual void Next() {}
-
-	float tpos;	
 };
 
 struct TrapezoidalMotionSegment {

@@ -51,7 +51,9 @@ uint32_t errors[33] = {
 };
 
 void ServoStruct::Init(uint8_t index) {
-    Index = index;
+	Gnax = 1;
+	Gax = 1 << index;
+	Index = Groot = Giax[0] = index;
     Motion = (MotionBase*)&Motions[index];
     Motion->Servo = this;
     InitialCounter = 1000;
@@ -130,11 +132,29 @@ void ServoStruct::GroupReset() {
 	}
 }
 void ServoStruct::GroupGetTPos(float* to) {
-    for (int i = 0; i < Gnax; i++) *to++ = Servo[Giax[i]].TPos;
+    for (int i = 0; i < Gnax; i++) {
+        ServoStruct& s = Servo[Giax[i]];
+        *to++ = s.TPos;
+        s.tpos = s.TPos;
+    }
 }
 uint8_t ServoStruct::GroupTPosChanged() {
 	for (int i = 0; i < Gnax; i++) if (Servo[Giax[i]].TPosChanged()) return 1;
     return 0;
+}
+void ServoStruct::StartMotion() {
+    for (int i = 0; i < Gnax; i++) {
+        ServoStruct& s = Servo[Giax[i]];
+        s.RPos = s.Motion->RPos; s.RVel = s.Motion->RVel; s.RAcc = s.Motion->RAcc; s.RJerk = s.Motion->RJerk;
+        s.RState |= SM_MOTION;
+    }
+}
+void ServoStruct::EndMotion() {
+    for (int i = 0; i < Gnax; i++) {
+        ServoStruct& s = Servo[Giax[i]];
+        s.RPos = s.Motion->RPos; s.RVel = s.Motion->RVel; s.RAcc = s.Motion->RAcc; s.RJerk = s.Motion->RJerk;
+        s.RState &= ~SM_MOTION;
+    }
 }
 uint8_t ServoStruct::SetServoMode(uint32_t mode) {
     if (mode & SM_ENABLE) {
@@ -215,7 +235,6 @@ void ServoStruct::Tick() {
     Motion->Tick();
     if (RState & SM_MOTION) {
         RPos = Motion->RPos; RVel = Motion->RVel; RAcc = Motion->RAcc; RJerk = Motion->RJerk;
-        if (Motion->phase == 0) RState &= ~SM_MOTION;
         if (OperationCounter && (--OperationCounter == 0)) Fault |= FLTB_MOTIONTIMEOUT;
     } else {
         if (OperationCounter && (--OperationCounter == 0)) RState &= ~SM_ENABLE;

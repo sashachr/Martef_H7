@@ -221,6 +221,8 @@ public:
     void GroupReset(int motion);
 	void GroupReset();
     void GroupGetTPos(float* to);
+    void StartMotion();
+    void EndMotion();
     uint8_t GroupTPosChanged();
     uint8_t TPosChanged() { return TPos != tpos; }
     uint8_t SetTPos(float pos);
