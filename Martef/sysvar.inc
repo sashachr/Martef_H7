@@ -148,7 +148,7 @@
 /* 147                */ {0},
 /* 148                */ {0},
 /* 149                */ {0},
-/* 150 GAXES          */ {NAX, TYPE_INT32|VF_DIRECTREAD|VF_PROPWRITE|CAT_VEL, MotionDirectRead(ax), MotionPropWrite(Group)},
+/* 150 GAXES          */ {NAX, TYPE_INT32|VF_DIRECTREAD|VF_PROPWRITE|CAT_VEL, ServoDirectRead(Gax), ServoPropWrite(Group)},
 /* 151 BQAMODE        */ {0},  // {1, TYPE_UINT8|VF_DIRECTREAD|VF_DIRECTWRITE|VF_FLASH, (int32_t*)&Servo.BqAc.Mode, 0},
 /* 152 BQAA1          */ {0},  // {1, TYPE_FLOAT|VF_DIRECTREAD|VF_DIRECTWRITE|VF_FLASH, (int32_t*)&Servo.BqAc.A1, 0},
 /* 153 BQAA2          */ {0},  // {1, TYPE_FLOAT|VF_DIRECTREAD|VF_DIRECTWRITE|VF_FLASH, (int32_t*)&Servo.BqAc.A2, 0},

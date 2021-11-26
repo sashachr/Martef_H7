@@ -12,6 +12,8 @@
 #include "servo.h"
 #include "motion.h"
 
+MotionWrap Motions;
+
 // Additional mathematics
 float atan2f(float x, float y) {
 	if (fabsf(y) <= fabsf(x)) {
@@ -28,9 +30,19 @@ float atan2f(float x, float y) {
 #define VPM_MINIMUMENERGY			3
 #define VPM_MINIMUMENERGYORTABLE	4
 #define VPM_THIRDORDER				5
-struct TableMotionDef TableMotion[1];
+struct TableMotionDef TableMotions[1];
 
-Arc2Motion Motion[NAX];				// Should be the greatest class of the family
+// union MaxMotion {
+// 	TrapezoidalMotion m0;
+// 	MinimumEnergyMotion m1;
+// 	ThirdOrderMotion m2;
+// 	TableMotion m3;
+// 	Line2Motion m4;
+// 	Arc2Motion m5;
+// 	TBlendedMotion m6;
+// } mMotion[NAX];
+
+// MotionBase* Motion[NAX];				// Should be the greatest class of the family
 
 // Third-order motion profile with jerk
 float CubicRootTable[113];
@@ -61,31 +73,19 @@ float FastCubicRoot(float x) {
 }
 
 void MotionBase::Init(int i) {
-	nax = 1;
-	ax = 1 << i;
-	iax[0] = index = group = i;
 	time = 0; phase = 0; 
 	MVel = 10; MAcc = 100; MJerk = 10000;
 	MTv = 500; MTa = 50; MTj = 10;
-	DefaultMotion(index);
+	SetType(M_DEFAULT);
 }
-void MotionBase::Reset() {
-	if (group != index) {
-		Motion[group].Reset();
-	} else {
-		for (int i = 0; i < nax; i++) if (iax[i] != index) Motion[iax[i]].Init(iax[i]);
-		Init(index);
-	}
-}
-void MotionBase::Group(int32_t gr) {
-	Reset();
-	if (gr == 0) return;
-	nax = 0;
-	for (int i = 0; (gr > 0) && (i < NAX); i++, gr>>=1) if (gr & 1) iax[nax++] = i;
-	for (int i = 0; i < nax; i++) if (iax[i] != index) {
-		Motion[iax[i]].Reset();
-		new(this) MotionBase();
-	}
+void MotionBase::SetType(int type) {
+	Type = type;
+	switch (type) {
+		case M_TRAPEZOIDAL: new(this) TrapezoidalMotion(); break;
+		case M_THIRDORDER: new(this) ThirdOrderMotion(); break;
+		case M_TBLENDED: new(this) TBlendedMotion(); break;
+		default: new(this) MotionBase();
+	} 
 }
 // Kill motion
 void MotionBase::Kill() {
@@ -94,31 +94,30 @@ void MotionBase::Kill() {
 }
 
 void MotionBase::Stop() {
-	new(this) MotionBase(M_NONE);
+	new(this) MotionBase();
 }
 
-TrapezoidalMotion::TrapezoidalMotion(float p1, float v1) : MotionBase (M_TRAPEZOIDAL) {
-	P0 = RPos; V0 = RVel; P1 = p1; V1 = v1; D = P1 - P0;
-	float S0 = V0 * fabsf(V0) / MAcc * 0.5F;
+void TrapezoidalMotion::Calculate(float p0, float v0, float p1, float v1) {
+	float S0 = v0 * fabsf(v0) / MAcc * 0.5F;
 	float VT = (S0 > D)? -MVel : MVel;
-	float A1 = (V0 > VT)? -MAcc : MAcc;
+	float A1 = (v0 > VT)? -MAcc : MAcc;
 	float A3 = (VT > 0.0F)? -MAcc : MAcc;
-	float T1 = (VT - V0) / A1;
+	float T1 = (VT - v0) / A1;
 	float T3 = -VT / A3;
-	float S1 = (V0 + VT) * 0.5F * T1;
+	float S1 = (v0 + VT) * 0.5F * T1;
 	float S3 = VT * 0.5F * T3;
 	float S2 = D - S1 - S3;
 	float T2;
 	if ((S2==0) || ((S2>0)==(VT>0))) {
 		T2 = S2/VT;
 		} else {
-		float VT1 = V0 * V0 * 0.5F + A1 * D;
+		float VT1 = v0 * v0 * 0.5F + A1 * D;
 		VT1 = (VT1 > 0)? sqrtf(VT1) : 0;
 		VT = (VT > 0)? VT1 : -VT1;
-		T1 = (VT - V0)/A1;
+		T1 = (VT - v0)/A1;
 		T2 = 0.0F;
 		T3 = -VT / A3;
-		S1 = (V0 + VT) * 0.5F * T1;
+		S1 = (v0 + VT) * 0.5F * T1;
 		S2 = 0;
 	}
 	Seg[0].StartTime = 0.0F;
@@ -126,8 +125,8 @@ TrapezoidalMotion::TrapezoidalMotion(float p1, float v1) : MotionBase (M_TRAPEZO
 	Seg[1].Duration = T2; Seg[2].StartTime = T1+T2;
 	Seg[2].Duration = T3;
 	Seg[0].Acc = A1; Seg[1].Acc = 0.0F; Seg[2].Acc = A3;
-	Seg[0].Vel = V0; Seg[1].Vel = Seg[2].Vel = VT;
-	Seg[0].Pos = P0; Seg[1].Pos = P0+S1; Seg[2].Pos = Seg[1].Pos+S2;
+	Seg[0].Vel = v0; Seg[1].Vel = Seg[2].Vel = VT;
+	Seg[0].Pos = p0; Seg[1].Pos = p0+S1; Seg[2].Pos = Seg[1].Pos+S2;
 	RAcc = Seg[0].Acc;
 	CurSegment = &Seg[0];
 	phase = 1;
@@ -139,6 +138,11 @@ TrapezoidalMotion::TrapezoidalMotion(float p1, float v1) : MotionBase (M_TRAPEZO
 // }
 
 void TrapezoidalMotion::Tick() {
+	if (Servo->TPosChanged()) {
+		if (Servo->ValidatePositionLoop()) {
+			Calculate(Servo->RPos, Servo->RVel, Servo->TPos, 0);
+		}
+	}
 	if (phase != 0) {
 		time += SECONDS_IN_TICK;
 		while (1) {
@@ -180,8 +184,8 @@ void TrapezoidalMotion::Kill() {
 	// phase = 3;
 }
 
-ThirdOrderMotion::ThirdOrderMotion(float p1) : MotionBase (M_THIRDORDER) {
-	P0 = RPos; P1 = p1; D = P1 - P0;
+ThirdOrderMotion::ThirdOrderMotion() : MotionBase () {
+	P0 = Servo->RPos; P1 = Servo->TPos; D = P1 - P0;
     uint8_t negative = D < 0;
     if (negative) D = -D;
     float J = MJerk, A = MAcc, V = MVel;
@@ -295,8 +299,8 @@ void ThirdOrderMotion::Tick() {
 	//SCB_EnableDCache();
 }
 
-TableMotion::TableMotion(float p1, float v1) : MotionBase(M_TABLE) {
-	P0 = RPos; V0 = RVel; P1 = p1; V1 = v1; 
+TableMotion::TableMotion() : MotionBase() {
+	P0 = Servo->RPos; V0 = Servo->RVel; P1 = Servo->TPos; V1 = 0; 
 	D = P1 - P0;
 	total = (uint16_t)(TableMotions[0].Duration*TICKS_IN_MILLISECOND + 0.5F);
 	factor = D / TableMotions[0].Distance;
@@ -400,28 +404,28 @@ void StartOneAxisMotion(MotionBase* M, float p1, float v1) {
 // //	SCB_EnableDCache();
 }
 
-Line2Motion::Line2Motion(float t0, float t1) : MotionBase(M_LINE2) {
-	s0 = Motion[0].RPos; s1 = Motion[1].RPos; f0 = t0; f1 = t1;
+Line2Motion::Line2Motion(float t0, float t1) : MotionBase() {
+	s0 = Motions[0].RPos; s1 = Motions[1].RPos; f0 = t0; f1 = t1;
 	float d0 = f0 - s0, d1 = f1 - s1;
 	L = sqrtf(d0 * d0 + d1 * d1); k0 = d0 / L; k1 = d1 / L;
 	new(&m) TrapezoidalMotion(L);
 	new(&m) TrapezoidalMotion(L, 0);
-	Motion[0].phase = m.phase; Motion[1].phase = 21;	// dependent
+	Motions[0].phase = m.phase; Motions[1].phase = 21;	// dependent
 }
 
 void Line2Motion::Tick() {
 	m.Tick();
 	if (m.phase > 0) {
-		Motion[0].RPos = s0 + m.RPos * k0; Motion[1].RPos = s1 + m.RPos * k1;
-		Motion[0].RVel = m.RVel * k0; Motion[1].RVel = m.RVel * k1;
-		Motion[0].RAcc = m.RAcc * k0; Motion[1].RAcc = m.RAcc * k1;
-		Motion[0].time = m.time; Motion[0].phase = m.phase;
+		Motions[0].RPos = s0 + m.RPos * k0; Motions[1].RPos = s1 + m.RPos * k1;
+		Motions[0].RVel = m.RVel * k0; Motions[1].RVel = m.RVel * k1;
+		Motions[0].RAcc = m.RAcc * k0; Motions[1].RAcc = m.RAcc * k1;
+		Motions[0].time = m.time; Motions[0].phase = m.phase;
 		} else {
-		Motion[0].RPos = f0; Motion[1].RPos = f1;
-		Motion[0].RVel = 0; Motion[1].RVel = 0;
-		Motion[0].RAcc = 0; Motion[1].RAcc = 0;
-		Motion[0].time = 0; Motion[0].phase = 0;
-		new(this) MotionBase(M_NONE);
+		Motions[0].RPos = f0; Motions[1].RPos = f1;
+		Motions[0].RVel = 0; Motions[1].RVel = 0;
+		Motions[0].RAcc = 0; Motions[1].RAcc = 0;
+		Motions[0].time = 0; Motions[0].phase = 0;
+		new(this) MotionBase();
 	}
 }
 
@@ -430,17 +434,17 @@ void Line2Motion::Kill() {
 }
 
 void StartLine2Motion(float t0, float t1) {
-	new(&Motion[1]) MotionBase();
-	new(&Motion[0]) Line2Motion(t0, t1);
+	new(&Motions[1]) MotionBase();
+	new(&Motions[0]) Line2Motion(t0, t1);
 	Servo[0].TPos = t0; Servo[1].TPos = t1;
 	Servo[0].SetMotionState(1); Servo[1].SetMotionState(1);
 }
 
-Arc2Motion::Arc2Motion(float t0, float t1, float ce0, float ce1, int d) : MotionBase(M_ARC2) {
+Arc2Motion::Arc2Motion(float t0, float t1, float ce0, float ce1, int d) : MotionBase() {
 	//SCB_CleanInvalidateDCache();
 	//SCB_DisableDCache();
 	dir = (int8_t)d;
-	s0 = Motion[0].RPos; s1 = Motion[1].RPos; f0 = t0; f1 = t1; c0 = ce0; c1 = ce1;
+	s0 = Motions[0].RPos; s1 = Motions[1].RPos; f0 = t0; f1 = t1; c0 = ce0; c1 = ce1;
 	float sv0 = s0 - c0, sv1 = s1 - c1, fv0 = f0 - c0, fv1 = f1 - c1;
 	sa = atan2f(sv0, sv1); fa = atan2f(fv0, fv1);
 	float a = fa - sa;
@@ -449,7 +453,7 @@ Arc2Motion::Arc2Motion(float t0, float t1, float ce0, float ce1, int d) : Motion
 	L = fabsf(r * a); ka = a / L; kr = (fr - sr) / L;
 	new(&m) TrapezoidalMotion(L);
 	new(&m) TrapezoidalMotion(L, 0);
-	Motion[0].phase = m.phase; Motion[1].phase = 21;	// dependent
+	Motions[0].phase = m.phase; Motions[1].phase = 21;	// dependent
 }
 
 void Arc2Motion::Tick() {
@@ -458,16 +462,16 @@ void Arc2Motion::Tick() {
 		float a = sa + m.RPos * ka, r = sr + m.RPos * kr;
 		float s = sinf(a), c = cosf(a), ss = s, sc = c;
 		if (dir < 0) {ss = -ss; sc = -sc;} 
-		Motion[0].RPos = c0 + r * c; Motion[1].RPos = c1 + r * s;
-		Motion[0].RVel = m.RVel * ss; Motion[1].RVel = m.RVel * sc;
-		Motion[0].RAcc = - m.RVel * m.RVel * c + m.RAcc * ss; Motion[1].RAcc = - m.RVel * m.RVel * s + m.RAcc * sc;
-		Motion[0].time = m.time; Motion[0].phase = m.phase;
+		Motions[0].RPos = c0 + r * c; Motions[1].RPos = c1 + r * s;
+		Motions[0].RVel = m.RVel * ss; Motions[1].RVel = m.RVel * sc;
+		Motions[0].RAcc = - m.RVel * m.RVel * c + m.RAcc * ss; Motions[1].RAcc = - m.RVel * m.RVel * s + m.RAcc * sc;
+		Motions[0].time = m.time; Motions[0].phase = m.phase;
 	} else {
-		Motion[0].RPos = f0; Motion[1].RPos = f1;
-		Motion[0].RVel = 0; Motion[1].RVel = 0;
-		Motion[0].RAcc = 0; Motion[1].RAcc = 0;
-		Motion[0].time = 0; Motion[0].phase = 0;
-		new(this) MotionBase(M_NONE);
+		Motions[0].RPos = f0; Motions[1].RPos = f1;
+		Motions[0].RVel = 0; Motions[1].RVel = 0;
+		Motions[0].RAcc = 0; Motions[1].RAcc = 0;
+		Motions[0].time = 0; Motions[0].phase = 0;
+		new(this) MotionBase();
 	}
 }
 
@@ -476,30 +480,29 @@ void Arc2Motion::Kill() {
 }
 
 void StartArc2Motion(float t0, float t1, float c0, float c1, int d) {
-	new(&Motion[1]) MotionBase();
-	new(&Motion[0]) Arc2Motion(t0, t1, c0, c1, d);
+	new(&Motions[1]) MotionBase();
+	new(&Motions[0]) Arc2Motion(t0, t1, c0, c1, d);
 	Servo[0].TPos = t0; Servo[1].TPos = t1;
 	Servo[0].SetMotionState(1); Servo[1].SetMotionState(1);
 }
 
-void TBlended::Tick() {
+void TBlendedMotion::Tick() {
 	uint8_t newmotion = 0;
-	for (uint8_t i = 0; i < nax; i++) {
-		uint8_t j = iax[i];
-		if (Motion[j].TPos != Motion[j].tpos) {
-			newmotion = 1; break;
-		}
-	}
+//	for (uint8_t i = 0; i < nax; i++) {
+//		uint8_t j = Servo->Giax[i];
+//	}
 	if (newmotion) {
 
 	}
 }
 
+// MotionBase* DefaultMotion(int i) {
+// 	return new(&Motions[i]) TrapezoidalMotion();
+// }
+
 void MotionInit() {
 	FillCubicRootTable();
-	for (int i = 0; i < NAX; i++) { DefaultMotion(i); Motion[i].Init(i); }
-}
-
-MotionBase* DefaultMotion(int i) {
-	return new(&Motion[i]) TrapezoidalMotion();
+	for (int i = 0; i < NAX; i++) { 
+		Motions[i].Init(i); 
+	}
 }

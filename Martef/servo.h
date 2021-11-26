@@ -112,6 +112,7 @@ public:
 #define FLTB_NLIMIT         0x01000000
 #define FLTB_PLIMIT         0x02000000
 #define FLTB_PEL            0x04000000
+#define FLTB_OPERATION      0x80000000
 
 // Routable variables
 #define RO_TPOS             1
@@ -126,6 +127,10 @@ class MotionBase;
 class ServoStruct {
 public:
     uint8_t Index;
+	uint32_t Gax;				// Bitwise specification of group axes
+	uint8_t Giax[NAX];			// Group axes
+	uint8_t Gnax;				// Number of group axes
+   	uint8_t Groot;				// Index of the group root
     uint8_t InTransition;
     uint32_t RState;
     uint32_t FState;
@@ -202,12 +207,22 @@ public:
 //    uint32_t SafetyBits();
     uint32_t GetError(uint32_t safety, uint8_t severity);
     void SetError(uint32_t error, uint8_t severity);
+    void SetFault(uint32_t fault, uint32_t error = 0);
     void ResetError() { Fault = Error = Severity = 0; }
     uint8_t IsEnabled() { return RState & SM_ENABLE; }
     uint8_t IsPosLoopEnabled() { return (RState & SM_ENABLE) && (RState & SM_POSITIONLOOP); }
     void SetMotionState(uint8_t stat) { if (stat) RState |= SM_MOTION; else RState &= ~SM_MOTION; }
+    void Disable();
+    uint8_t ValidatePositionLoopThis();
+    uint8_t ValidatePositionLoop();
     uint8_t SetServoMode(uint32_t mode);
     void SetOlCounter() { OperationCounter = (uint32_t)ceil(OtL * TICKS_IN_SECOND); }
+	void Group(int32_t gr);
+    void GroupReset(int motion);
+	void GroupReset();
+    void GroupGetTPos(float* to);
+    uint8_t GroupTPosChanged();
+    uint8_t TPosChanged() { return TPos != tpos; }
     uint8_t SetTPos(float pos);
     int32_t SetPos(float pos) { RPos = pos; RState = (RState & ~(SM_MOTION)) | (SM_POSITIONLOOP|SM_VELOCITYLOOP|SM_CURRENTLOOP|SM_PWM|SM_ENABLE); SetOlCounter(); return 1;}
     int32_t SetVel(float vel) { VIn = vel; RState = (RState & ~(SM_MOTION|SM_POSITIONLOOP)) | (SM_VELOCITYLOOP|SM_CURRENTLOOP|SM_PWM|SM_ENABLE); SetOlCounter(); return 1;}

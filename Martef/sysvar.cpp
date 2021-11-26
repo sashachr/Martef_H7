@@ -186,8 +186,9 @@ int32_t FlashSave(uint16_t ind, int16_t count, uint32_t* buf) {
 
 #define ServoDirectRead(var) StructDirectRead(Servo, var, NAX)
 #define ServoDirectReadWrite(var) StructDirectReadWrite(Servo, var, NAX)
+#define ServoPropWrite(func) StructPropWrite(Servo, func, NAX)
 #define MotionDirectRead(var) StructDirectRead(Motion, var, NAX)
-#define MotionDirectReadWrite(var) StructDirectReadWrite(Motion, var, NAX)
+#define MotionDirectReadWrite(var) StructDirectReadWrite(Motions, var, NAX)
 #define MotionPropWrite(func) StructPropWrite(Motion, func, NAX)
 
 #define StructDirectReadShort(struc, var, maxind) \

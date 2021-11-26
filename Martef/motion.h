@@ -5,35 +5,34 @@
 #pragma once
 
 #define M_NONE			0
-#define M_TRAPEZOIDAL	1
-#define M_TABLE			2
-#define M_MINIMUMENERGY	3
-#define M_THIRDORDER	4
+#define M_DEPENDENT		1
+#define M_TRAPEZOIDAL	2
+#define M_TABLE			3
+#define M_MINIMUMENERGY	4
+#define M_THIRDORDER	5
 #define M_LINE2			100
 #define M_ARC2			101
+#define M_TBLENDED		103
+#define M_DEFAULT		M_TRAPEZOIDAL
 
 #define MOTION_TABLE_MAX	1 // 1500
 
+class ServoStruct;
+
 class MotionBase {
 public:
-	uint32_t ax;				// Bitwise specification of related axes
-	uint8_t iax[NAX];			// Related axes
-	uint8_t nax;				// Number of related axes
-	uint8_t index;				// Index in Motion array
-	uint8_t group;				// Index of the group
+	uint8_t Index;				// Index in Motion array
+	uint16_t Type;
 	float TPos;					// Target position
 	float MVel, MAcc, MJerk; 	// Motion parameters
 	float MTv, MTa, MTj;		// Parameters for time-based motion
 	float RPos, RVel, RAcc, RJerk;
 	float time;
 	uint16_t phase;
-	uint16_t type;
-	uint16_t VelocityProfileMode;
-	MotionBase() {type = M_NONE;} 
-	MotionBase(uint16_t Type) {type = Type;}
+	ServoStruct* Servo;
+	MotionBase() {} 
 	void Init(int i);
-	void Reset();
-	void Group(int32_t gr);
+	void SetType(int type);
 	virtual void Tick() {}
 	virtual void Kill();
 	virtual void Stop(); 
@@ -55,9 +54,10 @@ public:
 	struct TrapezoidalMotionSegment Seg[3];
 	struct TrapezoidalMotionSegment *CurSegment;
 	TrapezoidalMotion(float p1, float v1);
-	TrapezoidalMotion(uint16_t type) : MotionBase(type) {}
+	TrapezoidalMotion(uint16_t type) : MotionBase() {}
 	TrapezoidalMotion() {}
 	TrapezoidalMotion(float p1);
+	void Calculate(float p0, float v0, float p1, float v1);
 	virtual void Tick();
 	virtual void Kill();
 };
@@ -81,7 +81,7 @@ class ThirdOrderMotion : public MotionBase {
 	float D;
 	struct ThirdOrderMotionSegment Seg[7];
 	struct ThirdOrderMotionSegment *CurSegment;
-	ThirdOrderMotion(float p1);
+	ThirdOrderMotion();
 	virtual void Tick();
 };
 
@@ -103,7 +103,7 @@ public:
 	uint16_t total, current;
 	float factor;
 	float *point;
-	TableMotion(float p1, float v1);
+	TableMotion();
 	virtual void Tick();
 };
 
@@ -128,18 +128,15 @@ public:
 	virtual void Kill();
 };
 
-class TBlended : public MotionBase {		// Time-bases blended motion 
+class TBlendedMotion : public MotionBase {		// Time-bases blended motion 
 public:
 	float tp0[NAX], tp1[NAX], tp2[NAX];		// Start, intermediate and final points
 	float p1, p2;		// Segments lengths
 	TrapezoidalMotion m;
-	TBlended() {}
+	TBlendedMotion() {}
 	virtual void Tick();
-	virtual void Kill();
+//	virtual void Kill();
 };
-
-extern struct TableMotionDef TableMotions[1];
-extern Arc2Motion Motion[NAX];
 
 void StartOneAxisMotion(MotionBase* M, float p1, float v1);
 
@@ -149,9 +146,23 @@ void StartArc2Motion(float t0, float t1, float c0, float c1, int d);
 
 //void MotionTick(MotionStruct& M);
 
-MotionBase* DefaultMotion(int i);
+//MotionBase* DefaultMotion(int i);
+
+class MotionWrap {
+public:
+	union {
+		char m0[sizeof(MotionBase)];
+		char m1[sizeof(TrapezoidalMotion)];
+		char m2[sizeof(MinimumEnergyMotion)];
+		char m3[sizeof(ThirdOrderMotion)];
+		char m4[sizeof(TableMotion)];
+		char m5[sizeof(Line2Motion)];
+		char m6[sizeof(Arc2Motion)];
+		char m7[sizeof(TBlendedMotion)];
+	} MotionContainers[NAX];
+	MotionBase& operator [] (int i) { return *(MotionBase*)&MotionContainers[i]; }
+};
+extern MotionWrap Motions;
 
 void MotionInit();
-inline void MotionTick() { for (int i = 0; i < NAX; i++) Motion[i].Tick(); }
-
 

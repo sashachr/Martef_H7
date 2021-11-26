@@ -52,7 +52,8 @@ uint32_t errors[33] = {
 
 void ServoStruct::Init(uint8_t index) {
     Index = index;
-    Motion = DefaultMotion(index);
+    Motion = (MotionBase*)&Motions[index];
+    Motion->Servo = this;
     InitialCounter = 1000;
     Vel = 10.F; Acc = 100.F; Dec = 100.F; KDec = 100.F; Jerk = 10000.F;
     RResolution = 5.6340E-5F; 
@@ -73,7 +74,7 @@ void ServoStruct::Init(uint8_t index) {
     NsL = -50; PsL = 50;
     OtL = 2; MtL = 0;
     VelF = 0.9;
-    FaultDisable = 0x07FF0000; 
+    FaultDisable = 0x87FF0000; 
     RelatedAxes = (1 << NAX) - 1;
 }
 
@@ -89,7 +90,91 @@ void ServoStruct::SetError(uint32_t error, uint8_t severity) {
         RState &= ~1;
     }
 }
-
+void ServoStruct::SetFault(uint32_t fault, uint32_t error) {
+    Fault |= fault;
+    Severity = (fault & FaultDisable) ? 3 : (fault & FaultKill) ? 1 : 0;
+    if (error) {
+        Error = error;
+    } else {
+        for (int i=31; i > 0; i--, fault<<1) if (fault & 0x80000000) {Error = errors[i]; break;}
+    }
+    if (Severity > 0) {
+        SetSignalRout(0, 0);
+        RState &= ~1;
+    }
+}
+void ServoStruct::Group(int32_t gr) {
+	GroupReset();
+	if (gr == 0) return;
+	Gax = gr;
+	Gnax = 0;
+	for (int i = 0; (gr > 0) && (i < NAX); i++, gr>>1) if (gr & 1) {
+		Giax[Gnax++] = i;
+        if (i != Index) {
+		    Servo[i].GroupReset();
+		    Servo[i].Groot = Index;
+		    Servo[i].Motion->SetType(M_DEPENDENT);
+        }
+	}
+}
+void ServoStruct::GroupReset(int motion) { 
+    Gnax = 1; Gax = 1 << Index; Giax[0] = Groot = Index; 
+    Motion->SetType(motion); 
+}
+void ServoStruct::GroupReset() {
+	if (Groot != Index) {
+		Servo[Groot].GroupReset();
+	} else {
+		for (int i = 0; i < Gnax; i++) if (Giax[i] != Index) Servo[Giax[i]].GroupReset(M_DEFAULT);
+		GroupReset(M_DEFAULT);
+	}
+}
+void ServoStruct::GroupGetTPos(float* to) {
+    for (int i = 0; i < Gnax; i++) *to++ = Servo[Giax[i]].TPos;
+}
+uint8_t ServoStruct::GroupTPosChanged() {
+	for (int i = 0; i < Gnax; i++) if (Servo[Giax[i]].TPosChanged()) return 1;
+    return 0;
+}
+uint8_t ServoStruct::SetServoMode(uint32_t mode) {
+    if (mode & SM_ENABLE) {
+        if ((mode & (SM_POSITIONLOOP|SM_VELOCITYLOOP)) && !(RState & SM_COMMUTATION)) return MRE_NOCOMMUT;
+    }
+    if (!(RState & SM_ENABLE) && (mode & SM_ENABLE)) SetError(0, 0);
+    RState = (RState & ~(SM_POSITIONLOOP|SM_VELOCITYLOOP|SM_CURRENTLOOP|SM_PWM)) | mode;
+    return 0;
+}
+void ServoStruct::Disable() {
+    if (Groot == Index) {
+	    for (int i = 0; i < Gnax; i++) Servo[Giax[i]].RState &= ~1;
+    } else {
+        Servo[Groot].Disable();
+    }
+}
+uint8_t ServoStruct::ValidatePositionLoopThis() {
+        if ((RState & (SM_POSITIONLOOP|SM_ENABLE)) == (SM_POSITIONLOOP|SM_ENABLE)) return 1;
+        if (!(RState & SM_COMMUTATION)) { SetFault(FLTB_OPERATION, MSE_NOCOMMUTATION); return 0; }
+        SetServoMode(SM_POSITIONLOOP|SM_ENABLE);
+        return ((RState & (SM_POSITIONLOOP|SM_ENABLE)) == (SM_POSITIONLOOP|SM_ENABLE));
+}
+uint8_t ServoStruct::ValidatePositionLoop() {
+    if (Groot == Index) {
+    	for (int i = 0; i < Gnax; i++) {
+            if (!Servo[Giax[i]].ValidatePositionLoopThis()) { Disable(); return 0; }
+        }
+        return 1;
+    } else {
+       	return Servo[Groot].ValidatePositionLoop();
+    }
+}
+// uint8_t ServoStruct::SetServoMode(uint32_t mode) {
+//     if (mode & SM_ENABLE) {
+//         if ((mode & (SM_POSITIONLOOP|SM_VELOCITYLOOP)) && !(RState & SM_COMMUTATION)) return MRE_NOCOMMUT;
+//     }
+//     if (!(RState & SM_ENABLE) && (mode & SM_ENABLE)) SetError(0, 0);
+//     RState = (RState & ~(SM_POSITIONLOOP|SM_VELOCITYLOOP|SM_CURRENTLOOP|SM_PWM)) | mode;
+//     return 0;
+// }
 void ServoStruct::Tick() {
     RPos4 = RPos3; RPos3 = RPos2; RPos2 = RPos1; RPos1 = RPos;
     Pe = RPos4 - ((RState & SM_FPOSROTARY) ? FPos1 : FPos);
@@ -141,15 +226,6 @@ void ServoStruct::Tick() {
     if (CInSource) {
         if (IsEnabled()) CIn = *CInSource; else { CInRout = 0; CInSource = 0; }
     }
-}
-
-uint8_t ServoStruct::SetServoMode(uint32_t mode) {
-    if (mode & SM_ENABLE) {
-        if ((mode & (SM_POSITIONLOOP|SM_VELOCITYLOOP)) && !(RState & SM_COMMUTATION)) return MRE_NOCOMMUT;
-    }
-    if (!(RState & SM_ENABLE) && (mode & SM_ENABLE)) SetError(0, 0);
-    RState = (RState & ~(SM_POSITIONLOOP|SM_VELOCITYLOOP|SM_CURRENTLOOP|SM_PWM)) | mode;
-    return 0;
 }
 
 uint8_t ServoStruct::SetTPos(float pos) {
