@@ -133,6 +133,7 @@ void TrapezoidalMotion::Calculate(float p0, float v0, float p1, float v1) {
 	RPos = Seg[0].Pos; RVel = Seg[0].Vel; RAcc = Seg[0].Acc; RJerk = 0;
 	CurSegment = &Seg[0];
 	phase = 1;
+	time = 0;
 	Servo->StartMotion();
 }
 
