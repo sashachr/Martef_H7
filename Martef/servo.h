@@ -211,16 +211,19 @@ public:
     void ResetError() { Fault = Error = Severity = 0; }
     uint8_t IsEnabled() { return RState & SM_ENABLE; }
     uint8_t IsPosLoopEnabled() { return (RState & SM_ENABLE) && (RState & SM_POSITIONLOOP); }
+    void SetOlCounter() { OperationCounter = (uint32_t)ceil(OtL * TICKS_IN_SECOND); }
     void SetMotionState(uint8_t stat) { if (stat) RState |= SM_MOTION; else RState &= ~SM_MOTION; }
     void Disable();
-    uint8_t ValidatePositionLoopThis();
-    uint8_t ValidatePositionLoop();
     uint8_t SetServoMode(uint32_t mode);
-    void SetOlCounter() { OperationCounter = (uint32_t)ceil(OtL * TICKS_IN_SECOND); }
+    uint8_t ValidatePositionLoop();
+    uint8_t GroupValidatePositionLoop();
 	void Group(int32_t gr);
     void GroupReset(int motion);
 	void GroupReset();
+    ServoStruct& GroupGetServo(int i);
     void GroupGetTPos(float* to);
+    void GroupGetRPos(float* to);
+    void GroupSetRefs(float* p0, float* c);
     void StartMotion();
     void EndMotion();
     uint8_t GroupTPosChanged();
@@ -242,19 +245,7 @@ private:
 
 extern ServoStruct Servo[];
 
+inline ServoStruct& ServoStruct::GroupGetServo(int i) { return Servo[Giax[i]]; }
 
 inline void ServoInit() { for (int i = 0; i < NAX; i++) Servo[i].Init(i); }
 inline void ServoTick() { for (int i = 0; i < NAX; i++) Servo[i].Tick(); }
-
-#define ServoSetVar(func) \
-    [](uint16_t ind, uint16_t count, int32_t* buf) -> int32_t {  \
-        int16_t i = 0, j = ind; \
-        for (; (i < count) && (j < NAX); i++,j++) if (!IsNan(*buf)) Servo[j].func(*(float*)buf++); \
-        return i; \
-    }
-#define ServoSetTPos  ServoSetVar(SetTPos)
-#define ServoSetPos  ServoSetVar(SetPos)
-#define ServoSetVel  ServoSetVar(SetVel)
-#define ServoSetCur  ServoSetVar(SetCur)
-#define ServoSetCurQ  ServoSetVar(SetCurQ)
-#define ServoSetTeta  ServoSetVar(SetTeta)

@@ -110,7 +110,7 @@ void ServoStruct::Group(int32_t gr) {
 	if (gr == 0) return;
 	Gax = gr;
 	Gnax = 0;
-	for (int i = 0; (gr > 0) && (i < NAX); i++, gr>>1) if (gr & 1) {
+	for (int i = 0; (gr > 0) && (i < NAX); i++, gr>>=1) if (gr & 1) {
 		Giax[Gnax++] = i;
         if (i != Index) {
 		    Servo[i].GroupReset();
@@ -138,23 +138,27 @@ void ServoStruct::GroupGetTPos(float* to) {
         s.tpos = s.TPos;
     }
 }
+void ServoStruct::GroupGetRPos(float* to) {
+    for (int i = 0; i < Gnax; i++) *to++ = Servo[Giax[i]].RPos;
+}
+void ServoStruct::GroupSetRefs(float* p0, float* c) {
+    for (int i = 0; i < Gnax; i++) {
+        ServoStruct& s = Servo[Giax[i]];  
+        s.RPos = p0[i] + Motion->GPos * c[i];
+        s.RVel = Motion->GVel * c[i];
+        s.RAcc = Motion->GAcc * c[i];
+        s.RJerk = Motion->GJerk * c[i];
+    }
+}
 uint8_t ServoStruct::GroupTPosChanged() {
 	for (int i = 0; i < Gnax; i++) if (Servo[Giax[i]].TPosChanged()) return 1;
     return 0;
 }
 void ServoStruct::StartMotion() {
-    for (int i = 0; i < Gnax; i++) {
-        ServoStruct& s = Servo[Giax[i]];
-        s.RPos = s.Motion->RPos; s.RVel = s.Motion->RVel; s.RAcc = s.Motion->RAcc; s.RJerk = s.Motion->RJerk;
-        s.RState |= SM_MOTION;
-    }
+    for (int i = 0; i < Gnax; i++) Servo[Giax[i]].RState |= SM_MOTION;
 }
 void ServoStruct::EndMotion() {
-    for (int i = 0; i < Gnax; i++) {
-        ServoStruct& s = Servo[Giax[i]];
-        s.RPos = s.Motion->RPos; s.RVel = s.Motion->RVel; s.RAcc = s.Motion->RAcc; s.RJerk = s.Motion->RJerk;
-        s.RState &= ~SM_MOTION;
-    }
+    for (int i = 0; i < Gnax; i++) Servo[Giax[i]].RState &= ~SM_MOTION;
 }
 uint8_t ServoStruct::SetServoMode(uint32_t mode) {
     if (mode & SM_ENABLE) {
@@ -171,20 +175,20 @@ void ServoStruct::Disable() {
         Servo[Groot].Disable();
     }
 }
-uint8_t ServoStruct::ValidatePositionLoopThis() {
-        if ((RState & (SM_POSITIONLOOP|SM_ENABLE)) == (SM_POSITIONLOOP|SM_ENABLE)) return 1;
-        if (!(RState & SM_COMMUTATION)) { SetFault(FLTB_OPERATION, MSE_NOCOMMUTATION); return 0; }
-        SetServoMode(SM_POSITIONLOOP|SM_ENABLE);
-        return ((RState & (SM_POSITIONLOOP|SM_ENABLE)) == (SM_POSITIONLOOP|SM_ENABLE));
-}
 uint8_t ServoStruct::ValidatePositionLoop() {
+    if ((RState & (SM_POSITIONLOOP|SM_ENABLE)) == (SM_POSITIONLOOP|SM_ENABLE)) return 1;
+    if (!(RState & SM_COMMUTATION)) { SetFault(FLTB_OPERATION, MSE_NOCOMMUTATION); return 0; }
+    SetServoMode(SM_POSITIONLOOP|SM_ENABLE);
+    return ((RState & (SM_POSITIONLOOP|SM_ENABLE)) == (SM_POSITIONLOOP|SM_ENABLE));
+}
+uint8_t ServoStruct::GroupValidatePositionLoop() {
     if (Groot == Index) {
     	for (int i = 0; i < Gnax; i++) {
-            if (!Servo[Giax[i]].ValidatePositionLoopThis()) { Disable(); return 0; }
+            if (!Servo[Giax[i]].ValidatePositionLoop()) { Disable(); return 0; }
         }
         return 1;
     } else {
-       	return Servo[Groot].ValidatePositionLoop();
+       	return Servo[Groot].GroupValidatePositionLoop();
     }
 }
 // uint8_t ServoStruct::SetServoMode(uint32_t mode) {
@@ -212,19 +216,6 @@ void ServoStruct::Tick() {
         enable = RState & 1;
         if (enable) ResetError();     
     }
-    if (IsPosLoopEnabled()) {
-        if (tpos != TPos) {
-            // tpos = TPos;
-            // Motion->Vel = Vel; Motion->Acc = Acc; Motion->Dec = Dec; Motion->Jerk = Jerk;
-            // Motion->RPos = RPos; Motion->RVel = RVel;
-            // new(Motion) TrapezoidalMotion(tpos, 0);
-            // RState |= SM_ENABLE|SM_POSITIONLOOP|SM_MOTION;
-            // OperationCounter = floor(MtL * TICKS_IN_SECOND);
-        }
-    } else {
-        tpos = TPos = RPos = (RState & SM_FPOSROTARY) ? FPos1 : FPos;
-        Pe = RVel = 0;
-    }
     ((uint16_t*)&PreFault)[1] = ((uint16_t*)&FState)[1];
     Fault |= PreFault & ~FaultMask;
     uint32_t severity = (Fault & FaultDisable) ? 3 : (Fault & FaultKill) ? 1 : 0;
@@ -233,11 +224,12 @@ void ServoStruct::Tick() {
         for (int i=0, j=1; i < NAX; i++, j<<1) if (RelatedAxes & j) Servo[i].SetError(FLT_INDUCED, severity);
     }
     Motion->Tick();
-    if (RState & SM_MOTION) {
-        RPos = Motion->RPos; RVel = Motion->RVel; RAcc = Motion->RAcc; RJerk = Motion->RJerk;
-        if (OperationCounter && (--OperationCounter == 0)) Fault |= FLTB_MOTIONTIMEOUT;
-    } else {
-        if (OperationCounter && (--OperationCounter == 0)) RState &= ~SM_ENABLE;
+    if (!IsPosLoopEnabled()) {
+        tpos = TPos = RPos = (RState & SM_FPOSROTARY) ? FPos1 : FPos;
+        Pe = RVel = 0;
+    }
+    if (OperationCounter && (--OperationCounter == 0)) {
+        if (RState & SM_MOTION) Fault |= FLTB_MOTIONTIMEOUT; else RState &= ~SM_ENABLE;   
     }
     if (VInSource) {
         if (IsEnabled()) VIn = *VInSource; else { VInRout = 0; VInSource = 0; }
@@ -248,10 +240,10 @@ void ServoStruct::Tick() {
 }
 
 uint8_t ServoStruct::SetTPos(float pos) {
-    uint8_t r;
-    if ((RState & (SM_POSITIONLOOP|SM_ENABLE)) != (SM_POSITIONLOOP|SM_ENABLE)) {
-        if (r = SetServoMode(SM_POSITIONLOOP|SM_ENABLE)) return r;
-    }
+    // uint8_t r;
+    // if ((RState & (SM_POSITIONLOOP|SM_ENABLE)) != (SM_POSITIONLOOP|SM_ENABLE)) {
+    //     if (r = SetServoMode(SM_POSITIONLOOP|SM_ENABLE)) return r;
+    // }
     TPos = pos;
     return 0;
 }

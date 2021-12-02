@@ -26,12 +26,17 @@ public:
 	float TPos[NAX];					// Target position
 	float MVel, MAcc, MJerk; 	// Motion parameters
 	float MTv, MTa, MTj;		// Parameters for time-based motion
-	float RPos, RVel, RAcc, RJerk;
+	float GPos, GVel, GAcc, GJerk;
 	float time;
 	uint16_t phase;
 	ServoStruct* Servo;
 	MotionBase() {} 
 	void Init(int i);
+	float Euclid(float* p0, float* p1, int n) {
+		float s = 0;
+		for (int i  = 0; i < n; i++) { float d = *p1++ - *p0++; s += d * d;}
+		return sqrtf(s);
+	}
 	void SetType(int32_t type);
 	virtual void Tick() {}
 	virtual void Kill();
@@ -55,7 +60,19 @@ public:
 	TrapezoidalMotion(uint16_t type) : MotionBase() {}
 	TrapezoidalMotion() {}
 	TrapezoidalMotion(float p1);
-	void Calculate(float p0, float v0, float p1, float v1);
+	void Calculate(float p0, float v0, float p1, float v1, float vel, float acc);
+	virtual void Tick();
+	virtual void Kill();
+};
+
+class GroupTrapezoidalMotion : public MotionBase {
+public:
+	float p0[NAX], p1[NAX], c[NAX];
+	float s;
+	struct TrapezoidalMotionSegment Seg[3];
+	struct TrapezoidalMotionSegment *CurSegment;
+	GroupTrapezoidalMotion() {}
+	void Calculate(float s, float vel, float acc);
 	virtual void Tick();
 	virtual void Kill();
 };
@@ -126,12 +143,15 @@ public:
 	virtual void Kill();
 };
 
-class TBlendedMotion : public MotionBase {		// Time-bases blended motion 
+#define TB_FIFO		3
+class TimeBased : public MotionBase {		// Time-bases blended motion 
 public:
-	float tp0[NAX], tp1[NAX], tp2[NAX];		// Start, intermediate and final points
-	float p1, p2;		// Segments lengths
-	TrapezoidalMotion m;
-	TBlendedMotion() {}
+	int npoint;
+	float pt[TB_FIFO][NAX+3];		// Start, intermediate and final points
+	float p[NAX], v[NAX], a[NAX], j[NAX], t; 
+	float vm[NAX], am[NAX];
+	int phase;
+	TimeBased() { }
 	virtual void Tick();
 //	virtual void Kill();
 };
@@ -156,7 +176,7 @@ public:
 		char m4[sizeof(TableMotion)];
 		char m5[sizeof(Line2Motion)];
 		char m6[sizeof(Arc2Motion)];
-		char m7[sizeof(TBlendedMotion)];
+		char m7[sizeof(TimeBased)];
 	} MotionContainers[NAX];
 	MotionBase& operator [] (int i) { return *(MotionBase*)&MotionContainers[i]; }
 };
