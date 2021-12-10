@@ -571,26 +571,28 @@ void StartArc2Motion(float t0, float t1, float c0, float c1, int d) {
 
 void TimeBased::Tick() {
 	if (Servo->GroupTPosChanged()) {
-		if (Servo->GroupValidatePositionLoop()) {
-			int n = (phase == 0) ? 0 : (npoint < TB_FIFO) ? npoint : TB_FIFO - 1;
-			Servo->GroupGetTPos(pt[n]);
-			pt[n][NAX+2] = (MTj >= SECONDS_IN_TICK*0.5F) ? MTj : SECONDS_IN_TICK*0.5F;
-			pt[n][NAX+1] = (MTa >= MTj) ? MTa : MTj;
-			pt[n][NAX] = (MTv >= pt[n][NAX+1]) ? MTv : pt[n][NAX+1];
-			if (phase == 0) {
-				Servo->GroupGetRPos(p); 
-				for (int i = 0; i < Servo->Gnax; i++) { 
-					vm[i] = (pt[0][i] - p[i]) / pt[0][NAX];
-					am[i] = vm[i] / pt[0][NAX+1];
-					v[i0 = 0[i] = 0; 
-					j[i] = am[0] / pt[0][NAX+2]; 
-				}
-				t = pt[0][NAX+2];
-				time = 0;
-				phase = 1;
-			}
-		}
+		int n = (npoint < TB_FIFO) ? npoint : TB_FIFO - 1;
+		Servo->GroupGetTPos(pt[n]);
+		float tj = (MTj >= SECONDS_IN_TICK*0.5F) ? MTj : SECONDS_IN_TICK*0.5F;
+		float ta = (MTa >= tj) ? MTa : tj;
+		pt[n][NAX] = (MTv >= ta) ? MTv : ta;
+		pt[n][NAX+1] = ta;
+		pt[n][NAX+2] = tj;
 	}
+	if (phase == 0) {
+		if ((npoint > 0) && Servo->GroupValidatePositionLoop()) {
+			Servo->GroupGetRPos(p); 
+			for (int i = 0; i < Servo->Gnax; i++) { 
+				vm[i] = (pt[0][i] - p[i]) / pt[0][NAX];
+				am[i] = vm[i] / pt[0][NAX+1];
+				v[i] = a[i] = 0; 
+				j[i] = am[0] / pt[0][NAX+2]; 
+			}
+			t = pt[0][NAX+2];
+			time = 0;
+			phase = 1;
+		}
+	} 
 	if (phase != 0) {
 		time += SECONDS_IN_TICK;
 		while (1) {
@@ -604,18 +606,19 @@ void TimeBased::Tick() {
 				}
 				break;
 			} else {
-				?????????????????????????????????????????
-				if (phase<=2) {
+				if (phase==7) {
+					for (int i = 0; i < Servo->Gnax; i++) {
+						ServoStruct& s = Servo->GroupGetServo(i);
+						s.RPos = ;
+						GVel = GAcc = 0;
+						phase = 0;
+						Servo->GroupSetRefs(p0, c);
+						Servo->EndMotion();
+					break;
+				} else {	// Motion finished
 					phase++;
 					CurSegment++;
 					GAcc = CurSegment->Acc;
-				} else {	// Motion finished
-					GPos = s;
-					GVel = GAcc = 0;
-					phase = 0;
-					Servo->GroupSetRefs(p0, c);
-					Servo->EndMotion();
-					break;
 				}
 			}
 		}
