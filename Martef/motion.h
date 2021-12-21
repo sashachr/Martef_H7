@@ -4,6 +4,7 @@
 
 #pragma once
 
+// Motions
 #define M_NONE			0
 #define M_DEPENDENT		1
 #define M_TRAPEZOIDAL	2
@@ -15,6 +16,11 @@
 #define M_TBLENDED		103
 #define M_DEFAULT		M_TRAPEZOIDAL
 
+// Joining
+#define J_COMPLETE		1
+#define J_BLENDING		2
+#define J_IMMEDIATE		3
+
 #define MOTION_TABLE_MAX	1 // 1500
 
 class ServoStruct;
@@ -23,6 +29,7 @@ class MotionBase {
 public:
 	uint8_t Index;				// Index in Motion array
 	int32_t Type;
+	int32_t Join;
 	float TPos[NAX];					// Target position
 	float MVel, MAcc, MJerk; 	// Motion parameters
 	float MTv, MTa, MTj;		// Parameters for time-based motion
