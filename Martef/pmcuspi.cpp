@@ -189,9 +189,9 @@ void PmcuSpi::EncipherCommand(uint32_t* buf) {
 }
 
 void PmcuSpiTickStart() {
-    GPIOF->BSRR = 0x00000040;                  // F6 = 1 (NSS)
+    GPIOF->BSRR = 0x00004040;                  // F6 = 1 (NSS)
     for (int i=0; i<2; i++) pmcu[i].TickStart();
-    GPIOF->BSRR = 0x00400000;                  // F6 = 0 (NSS)
+    GPIOF->BSRR = 0x40400000;                  // F6 = 0 (NSS)
     for (int i=0; i<2; i++) pmcu[i].EnableDma();
 }
 void PmcuSpiTickEnd() {
