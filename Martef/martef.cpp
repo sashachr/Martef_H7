@@ -52,5 +52,5 @@ void MartefTick() {
         PmcuSpiTickEnd();
     }
     TimeTickEnd();
-    GPIOF->BSRR = 0x80000000;           // Reset TP1
+    // GPIOF->BSRR = 0x80000000;           // Reset TP1
 }
