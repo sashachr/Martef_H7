@@ -21,6 +21,7 @@ void TimeInit() {
 }
 
 uint32_t Leds = 0x00000008;
+extern "C" __IO uint32_t uwTick;
 
 void TimeTickStart() {
     Time.Late = (Time.Period - SysTick->VAL) * Time.percentFactor;
@@ -29,6 +30,7 @@ void TimeTickStart() {
 	if (++Time.inMillisecondCount == (int)TICKS_IN_MILLISECOND) {
 		Time.inMillisecondCount = 0;
         Time.Milliseconds++;
+        uwTick = Time.Milliseconds;
         if (Time.initialDelayCount) Time.initialDelayCount--;
 		if (++Time.inSecondCount == 1000) {
 			Time.inSecondCount = 0;

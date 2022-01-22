@@ -40,8 +40,8 @@ _estack = ORIGIN(RAM_D1) + LENGTH(RAM_D1);    /* end of RAM */
 /*_isr_start = ORIGIN(FLASH_FIRM);*/
 _isr_start = ORIGIN(FLASH_BOOT);  /* Temporarely */
 /* Generate a link error if heap and stack don't fit into RAM */
-_Min_Heap_Size = 0x200 ;      /* required amount of heap  */
-_Min_Stack_Size = 0x400 ; /* required amount of stack */
+_Min_Heap_Size = 0x1000 ;      /* required amount of heap  */
+_Min_Stack_Size = 0x1000 ; /* required amount of stack */
 
 /* Specify the memory areas */
 MEMORY
@@ -203,7 +203,16 @@ SECTIONS
     _eramD1zero = .;
   } >RAM_D1
 
-  .ramD2 (NOLOAD) : /* Space before ':' is critical */
+.lwip_sec (NOLOAD) : {
+    . = ABSOLUTE(0x30000000);
+    *(.RxDecripSection) 
+    . = ABSOLUTE(0x30000060);
+    *(.TxDecripSection)
+    . = ABSOLUTE(0x30000200);
+    *(.RxArraySection) 
+  } >RAM_D2 AT> FLASH_FIRM 
+  
+.ramD2 (NOLOAD) : /* Space before ':' is critical */
   {
     . = ALIGN(4);
     _sramD2 = .;

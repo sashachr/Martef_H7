@@ -14,16 +14,19 @@
 #include "motion.h"
 #include "servo.h"
 #include "io.h"
+//#include "ethip.h"
 #include "pins.h"
 #include "systick.h"
 #include "command.h"
 #include "timer.h"
 #include "flash.h"
+#include "lwipif.h"
 #include "martef.h"
 
 void MartefInit() {
     TimeInit();
     CommunicationInit();
+//    IpInit();
     CommandInit();
     Io.Init();
     MotionInit();
@@ -35,6 +38,7 @@ void MartefInit() {
     FlashGetInitArea();
 	SysTickInit();
 	PinsInit();
+    EthInit();
 }
 
 void MartefTick() {
@@ -48,6 +52,7 @@ void MartefTick() {
 //        LedStatus.Tick();
         for (int i = 0; i < 2; i++) Signals[i].Tick();
         Scope.Tick();
+        EthTick();
         CommunicationTick();
         PmcuSpiTickEnd();
     }

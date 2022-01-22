@@ -75,7 +75,7 @@ struct IoConfStruct IoConf[nIoPins] = {
 };
 */
 
-#define nIoPins   11
+#define nIoPins   21
 struct IoConfStruct IoConf[nIoPins] = {
   { 3,  8,  2,  7,  0,  2,  0,  0},     // D8 - USART3 TX, push-pull, 50 MHz, no pull-up/down
   { 3,  9,  2,  7,  0,  2,  0,  0},     // D9 - USART3 RX, push-pull, 50 MHz, no pull-up/down
@@ -88,9 +88,20 @@ struct IoConfStruct IoConf[nIoPins] = {
   { 5,  8,  2,  5,  0,  3,  0,  0},     // F8 - SPI5 MISO, 100 MHz
   { 5,  9,  2,  5,  0,  3,  0,  0},     // F9 - SPI5 MOSI, 100 MHz
   { 5, 14,  1,  0,  0,  3,  0,  1},     // F14 output, 100 MHz (SPI2 NSS)
-  { 3,  3,  2,  5,  0,  3,  0,  0},     // D3 - SPI5 SCK, 100 MHz
-  { 2,  2,  2,  5,  0,  3,  0,  0},     // C2 - SPI5 MISO, 100 MHz
-  { 2,  3,  2,  5,  0,  3,  0,  0},     // C3 - SPI5 MOSI, 100 MHz
+  { 3,  3,  2,  5,  0,  3,  0,  0},     // D3 - SPI2 SCK, 100 MHz
+  { 2,  2,  2,  5,  0,  3,  0,  0},     // C2 - SPI2 MISO, 100 MHz
+  { 2,  3,  2,  5,  0,  3,  0,  0},     // C3 - SPI2 MOSI, 100 MHz
+// Ethernet
+  { 0,  1,  2, 11,  0,  3,  0,  0},     // A1	ETH_REF_CLK	
+  { 0,  2,  2, 11,  0,  3,  0,  0},     // A2	ETH_MDIO	
+  { 0,  7,  2, 11,  0,  3,  0,  0},     // A7	ETH_CRS_DV	
+  { 1, 10,  2, 11,  0,  3,  0,  0},     // B10	ETH_RXER	
+  { 1, 11,  2, 11,  0,  3,  0,  0},     // B11	ETH_TX_EN	
+  { 1, 12,  2, 11,  0,  3,  0,  0},     // B12	ETH_TXD0	
+  { 1, 13,  2, 11,  0,  3,  0,  0},     // B13	ETH_TXD1	
+  { 2,  1,  2, 11,  0,  3,  0,  0},     // C1	ETH_MDC	
+  { 2,  4,  2, 11,  0,  3,  0,  0},     // C4	ETH_RXD0	
+  { 2,  5,  2, 11,  0,  3,  0,  0},     // C5	ETH_RXD1	
 };
 
 void PinSet(struct IoConfStruct IoC) {
