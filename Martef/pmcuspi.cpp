@@ -107,7 +107,7 @@ volatile uint32_t* const Spi::rccregs[] = { 0, &RCC->APB2ENR, &RCC->APB1LENR, &R
 uint32_t const Spi::rccbits[] = { 0, 0x00001000, 0x00004000, 0x00008000, 0x00002000, 0x00100000, 0x00000020 };                        // Mapping to RCC bits   
 uint32_t const Spi::clocks[] = { 0, APB2_RATE, APB1_RATE, APB1_RATE, APB2_RATE, APB2_RATE, APB4_RATE};        // Connection to clock     
 
-__attribute__((section(".ramD2"))) static uint32_t spiBufs[4 * 12 * NAX];
+__attribute__((section(".ramD1"))) static uint32_t spiBufs[4 * 12 * NAX];
 //static uint32_t* spiInBuf[] = {spiBufs, spiBufs + 12};
 //static uint32_t* spiOutBuf[] = {spiBufs + 24, spiBufs + 36};
 

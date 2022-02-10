@@ -95,7 +95,7 @@ struct ScopeStruct {
 	uint8_t Stage, Mode;
     int8_t StoreBuf, SendBuf;				
 	int32_t *pStore;		// Pointers to current collection buffer and read buffer};
-    struct SaDmaStruct Send[2];
+    struct MultiBufStruct Send[2];
 
     void Init();
     void Tick();

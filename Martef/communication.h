@@ -1,14 +1,27 @@
 #pragma once
 
 // Software-assisted DMA
-struct PacketStruct {
+struct BufStruct {
 	uint8_t* Addr;
 	uint16_t Count;
 };
-struct SaDmaStruct {
-    uint8_t pCount;
-    uint8_t pCounter;
-    struct PacketStruct Packets[5];
+struct MultiBufStruct {
+    uint8_t Count;
+    struct BufStruct Bufs[9];
+};
+// struct SaDmaStruct {
+//     uint8_t pCount;
+//     uint8_t pCounter;
+//     struct BufStruct Packets[5];
+// };
+struct TransactionStruct {
+    uint8_t* Inb;           // command buffer
+    uint32_t Inbl;          // command buffer length in bytes
+    uint8_t* Outb;          // main reply buffer
+    uint32_t Outbl;         // main reply buffer size in bytes
+    uint8_t BuCount;
+    uint32_t ByCount;
+    MultiBufStruct Mbuf;    // multi-buffer reply
 };
 
 // MDMA services
@@ -49,11 +62,11 @@ class CommChannel {
 	protected: uint8_t Channel;
     public: MDMA_Channel_TypeDef* RxMdma;
     public: MDMA_Channel_TypeDef* TxMdma;
-    public: SaDmaStruct* SaDma;
-	protected: CommChannel(uint8_t index) : Channel(index), SaDma(0) {}
+    public: TransactionStruct Trans;
+	protected: CommChannel(uint8_t index) : Channel(index) {}
     public: virtual void Tick() = 0;
     public: virtual int StartRead() {return 0;}
-    public: virtual int StartWrite(uint16_t count) {return 0;}
+    public: virtual int StartWrite() {return 0;}
     public: virtual int BusyRead() {return 0;}
     public: virtual int BusyWrite(uint16_t count) {return 0;}
 };
@@ -80,5 +93,7 @@ class CommChannelDma : public CommChannel {
 
 void CommunicationTick();
 void CommunicationInit();
+
+extern "C" void EthCallback(uint8_t* data, int len);
 
 extern CommChannel* CommChannels[];

@@ -10,6 +10,6 @@ ver = get_git_current_version()
 hash = get_git_current_hash()
 file = 'Martef\\gitversion.h'
 with open(file, 'w') as gv:
-    gv.write('uint8_t GitVersion[] = \"' + ver + '\";\n')
-    gv.write('uint8_t GitSha[] = \"' + hash + '\";\n')
+    gv.write('const uint8_t GitVersion[] = \"' + ver + '\";\n')
+    gv.write('const uint8_t GitSha[] = \"' + hash + '\";\n')
 pass

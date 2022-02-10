@@ -54,11 +54,11 @@ static void Trace(int d) { trace[itrace] = d; if (++itrace >= 1000) itrace = 0; 
 
 void ScopeStruct::Tick() {
 	Trace(Stage);
-    if ((SendBuf >= 0) && (Send[SendBuf].pCount == 0)) SendBuf = -1; 
+    if ((SendBuf >= 0) && (Send[SendBuf].Count == 0)) SendBuf = -1; 
 	if (Stage == SCS_IDLE) {
         return;
     } else if (Stage == SCS_END) {
-        if ((SendBuf >= 0) && (Send[SendBuf].pCount > 0)) return;
+        if ((SendBuf >= 0) && (Send[SendBuf].Count > 0)) return;
         FillSend(StoreBuf);
         Start(StoreBuf ^ 1);
     } else if (Stage == SCS_TRIGGERED) {
@@ -182,17 +182,16 @@ uint8_t ScopeStruct::Configure(int32_t* from, uint16_t count) {
 }
 
 uint16_t ScopeStruct::FillSend(uint8_t buf) {
-    struct SaDmaStruct* send = &Send[buf];
-    send->Packets[0].Addr = (uint8_t*)&Config;
-    send->Packets[0].Count = 64;
-    send->Packets[1].Addr = (uint8_t*)((buf ? scBuf + SC_MAXSIGNALS * SC_MAXDEPTH : scBuf) + Sweep.iStore * Config.nSignals);
-    send->Packets[1].Count = 4 * (Config.Depth - Sweep.iStore) * Config.nSignals;
+    struct MultiBufStruct* send = &Send[buf];
+    send->Bufs[0].Addr = (uint8_t*)&Config;
+    send->Bufs[0].Count = 64;
+    send->Bufs[1].Addr = (uint8_t*)((buf ? scBuf + SC_MAXSIGNALS * SC_MAXDEPTH : scBuf) + Sweep.iStore * Config.nSignals);
+    send->Bufs[1].Count = 4 * (Config.Depth - Sweep.iStore) * Config.nSignals;
     if (Sweep.iStore != 0) {
-        send->Packets[2].Addr = (uint8_t*)(buf ? scBuf + SC_MAXSIGNALS * SC_MAXDEPTH : scBuf);
-        send->Packets[2].Count = 4 * Sweep.iStore * Config.nSignals;
+        send->Bufs[2].Addr = (uint8_t*)(buf ? scBuf + SC_MAXSIGNALS * SC_MAXDEPTH : scBuf);
+        send->Bufs[2].Count = 4 * Sweep.iStore * Config.nSignals;
     }
-    send->pCount = (Sweep.iStore == 0) ? 2 : 3;
-    send->pCounter = 0;
+    send->Count = (Sweep.iStore == 0) ? 2 : 3;
     SendBuf = buf;
 	return 0;
 }

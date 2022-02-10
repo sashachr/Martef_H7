@@ -106,8 +106,8 @@ extern byte Program[MaxProgram];
 #define MRE_WRONGVALUE          102
 #define MRE_NOCOMMUT            103
 
-extern uint8_t ProductString[];
-extern uint8_t ManufacturerString[];
+extern const uint8_t ProductString[];
+extern const uint8_t ManufacturerString[];
 // extern const uint8_t GitVersion[];
 // extern const uint8_t GitSha[];
 extern uint8_t ApplicationString[];
@@ -143,7 +143,7 @@ extern uint8_t Motor;      // 1/2/4/6/8/12/16/24=HR1/2/4/6/8/12/16/24, 101/102/1
 
 
 void GetGuidUnit(uint32_t* dest);
-inline void GuidFromString(GUID* guid, const uint8_t* str) {
+inline void GuidFromString(struct GUID* guid, const uint8_t* str) {
     uint8_t* g = (uint8_t*)guid;
     for (int i = 0; i < 32; i++) {
         uint8_t nibble = *str++;
@@ -157,6 +157,7 @@ inline void MemCpy32(void* dest, void* source, uint32_t count) {
   	uint32_t *d = (uint32_t*)dest, *s = (uint32_t*)source;
   	for (uint32_t i = 0; i < count; i++) *d++ = *s++; 
 } 
+inline int Min(int a, int b) { return (a <= b) ? a : b; }
 
 inline uint16_t IsNan(float V)
 {
@@ -171,7 +172,7 @@ inline float GetNan()
 
 union Any32 {float Float; int32_t Int; uint32_t Uint;};
 
-inline float GetNone() { Any32 n; n.Uint = 0xFFFFFFFF; return n.Float; }
+inline float GetNone() { union Any32 n; n.Uint = 0xFFFFFFFF; return n.Float; }
 #define NONE GetNone()
 
 uint32_t Adler32(int16_t* Buf, uint16_t Count);
@@ -179,7 +180,7 @@ uint32_t Adler32(int16_t* Buf, uint16_t Count);
 // Calculate Fletcher32 sum of the Buf, Count is Buf length in 16-bit words
 uint32_t Fletcher32(uint16_t* buf, uint16_t count);
 
-int GetGuidString(GUID* guid, uint8_t* buf, int len);
+int GetGuidString(struct GUID* guid, uint8_t* buf, int len);
 
 void SysRestart();
 

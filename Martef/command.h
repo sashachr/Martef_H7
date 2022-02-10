@@ -26,5 +26,5 @@ enum MRE_ERRORS {
 
 void CommandInit();
 
-class CommChannel;
-void CommandExecute(uint8_t* com, int comcount, CommChannel* ch);
+struct TransactionStruct;
+void CommandExecute(TransactionStruct* t);

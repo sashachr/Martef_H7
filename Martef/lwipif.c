@@ -18,6 +18,7 @@
   */
 
 /* Includes ------------------------------------------------------------------*/
+#include <string.h>
 #include "stm32h7xx_hal.h"
 #include "lwip/opt.h"
 #include "lwip/timeouts.h"
@@ -25,7 +26,7 @@
 #include "lwip/dhcp.h"
 #include "netif/etharp.h"
 #include "lan8742.h"
-#include <string.h>
+#include "global.h"
 #include "lwipif.h"
 
 /* Private typedef -----------------------------------------------------------*/
@@ -260,7 +261,7 @@ static struct pbuf * low_level_input(struct netif *netif)
 	HAL_ETH_BuildRxDescriptors(&EthHandle);
 
     /* Invalidate data cache for ETH Rx Buffers */
-    SCB_InvalidateDCache_by_Addr((uint32_t *)RxBuff->buffer, framelength);
+    InvalidateDCacheIfUsed((uint32_t *)RxBuff->buffer, framelength);
     
     custom_pbuf  = (struct pbuf_custom*)LWIP_MEMPOOL_ALLOC(RX_POOL);
     if(custom_pbuf != NULL)
@@ -783,6 +784,8 @@ void DHCP_Periodic_Handle(struct netif *netif)
 
 // ************* UDP Callback from udp_echoserver.c
 
+void EthCallback(uint8_t* data, int len);
+
 /**
   * @brief This function is called when an UDP datagrm has been received on the port UDP_PORT.
   * @param arg user supplied argument (udp_pcb.recv_arg)
@@ -794,6 +797,8 @@ void DHCP_Periodic_Handle(struct netif *netif)
   */
 void udp_echoserver_receive_callback(void *arg, struct udp_pcb *upcb, struct pbuf *p, const ip_addr_t *addr, u16_t port)
 {
+  EthCallback((uint8_t*)p->payload, p->tot_len);
+  
   struct pbuf *p_tx;
   
   /* allocate pbuf from RAM*/
