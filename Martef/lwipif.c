@@ -35,8 +35,6 @@
 #define IFNAME0 's'
 #define IFNAME1 't'
 
-#define ETH_RX_BUFFER_SIZE                     (1536UL)
-
 #define ETH_DMA_TRANSMIT_TIMEOUT                (20U)
 
 /* Private macro -------------------------------------------------------------*/
@@ -782,9 +780,25 @@ void DHCP_Periodic_Handle(struct netif *netif)
 }
 #endif
 
+// ************* Interface functions for Martef command processing
+// Scratchpad elements
+struct udp_pcb *tpcb;
+struct pbuf* tbuf;
+
+uint8_t* EthTxAlloc(uint16_t len) {
+  tbuf = pbuf_alloc(PBUF_TRANSPORT, len, PBUF_RAM);
+  return (tbuf == 0) ? 0 : (uint8_t*)tbuf->payload;
+}
+uint8_t EthSend() {
+  int8_t res = udp_send(tpcb, tbuf);
+  pbuf_free(tbuf);
+}
+void EthTxEnd() {
+    udp_disconnect(tpcb);
+}
 // ************* UDP Callback from udp_echoserver.c
 
-void EthCallback(uint8_t* data, int len);
+void EthCallback(uint8_t* command, int clen);
 
 /**
   * @brief This function is called when an UDP datagrm has been received on the port UDP_PORT.
@@ -797,31 +811,9 @@ void EthCallback(uint8_t* data, int len);
   */
 void udp_echoserver_receive_callback(void *arg, struct udp_pcb *upcb, struct pbuf *p, const ip_addr_t *addr, u16_t port)
 {
+  udp_connect(upcb, addr, UDP_CLIENT_PORT);
   EthCallback((uint8_t*)p->payload, p->tot_len);
-  
-  struct pbuf *p_tx;
-  
-  /* allocate pbuf from RAM*/
-  p_tx = pbuf_alloc(PBUF_TRANSPORT,p->len, PBUF_RAM);
-  
-  if(p_tx != NULL)
-  {
-    pbuf_take(p_tx, (char*)p->payload, p->len);
-    /* Connect to the remote client */
-    udp_connect(upcb, addr, UDP_CLIENT_PORT);
-    
-    /* Tell the client that we have accepted it */
-    udp_send(upcb, p_tx);
-    
-    /* free the UDP connection, so we can accept new clients */
-    udp_disconnect(upcb);
-    
-    /* Free the p_tx buffer */
-    pbuf_free(p_tx);
-
-    /* Free the p buffer */
-    pbuf_free(p);
-  }
+  pbuf_free(p);
 }
 
 /**

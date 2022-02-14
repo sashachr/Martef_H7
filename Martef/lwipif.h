@@ -28,6 +28,9 @@
 extern "C" {
 #endif
 
+#define ETH_RX_BUFFER_SIZE                     (1536UL)
+#define ETH_TX_BUFFER_SIZE                     (1536UL)
+
 /* UDP local connection port */
 #define UDP_SERVER_PORT    7
 /* UDP remote connection port */
@@ -57,6 +60,9 @@ void ethernetif_input(struct netif *netif);
 void ethernet_link_check_state(struct netif *netif);
 void EthInit(void);
 void EthTick(void);
+uint8_t* EthTxAlloc(uint16_t len);
+uint8_t EthSend();
+void EthTxEnd();
 
 #ifdef __cplusplus
 }

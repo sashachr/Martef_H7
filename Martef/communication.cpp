@@ -7,14 +7,14 @@
 
 #define UARTINSIZE  1024
 #define UARTOUTSIZE 1024
-__attribute__((section(".mdmalink"))) static struct MdmaLink uartlist[10];     // MDMA linked list
+__attribute__((section(".mdmalink"))) static struct MdmaLink uartlist[10], ethlist[10];     // MDMA linked list
 __attribute__((section(".ramD1"), aligned(32))) uint8_t uartwritebuf[UARTOUTSIZE], uartreadbuf[UARTINSIZE];
-uint8_t uartwriteheader[UARTOUTSIZE];
+uint8_t uartwriteheader[UARTOUTSIZE], ethwriteheader[ETH_TX_BUFFER_SIZE];
 
 class CommUart : public CommChannelDma {
     USART_TypeDef* hard;
     uint16_t received, readlen, intertime, intercount;
-    public: CommUart(uint8_t index, uint8_t periphindex, uint8_t bus, uint8_t dma, uint8_t rxstream, uint8_t rxchannel, uint8_t txstream, uint8_t txchannel, uint32_t rate, uint16_t intertimeout);
+    public: void Init(uint8_t index, uint8_t periphindex, uint8_t bus, uint8_t dma, uint8_t rxstream, uint8_t rxchannel, uint8_t txstream, uint8_t txchannel, uint32_t rate, uint16_t intertimeout);
     public: virtual void Tick();
     private: void TickRead();
     private: void TickWrite();
@@ -23,47 +23,30 @@ class CommUart : public CommChannelDma {
     private: int ContinueWrite();
 };
 
-class CommI2c : public CommChannel {
-    I2C_TypeDef* hard;
-    uint8_t count;      // bytes to transfer
-    int8_t counter;    // current byte to transfer
-    uint8_t state;      // 0 - idle, 1 - read, 2 - write
-    int timeout;
-    int tocounter;
-    public: CommI2c(uint8_t index, uint8_t periphindex, uint8_t bus, uint8_t dma, uint8_t rxstream, uint8_t rxchannel, uint8_t txstream, uint8_t txchannel, uint32_t rate);
-    public: virtual void Tick();
-    private: void TickRead();
-    private: void TickWrite();
-    public: virtual int StartRead();
-    public: virtual int StartWrite();
-};
-
 class CommEth : public CommChannel {
     uint16_t received, readlen;
-    public: CommEth(uint8_t index, uint8_t periphindex, uint8_t bus, uint8_t dma, uint8_t rxstream, uint8_t rxchannel, uint8_t txstream, uint8_t txchannel, uint32_t rate, uint16_t intertimeout);
+    public: void Init(uint8_t index, uint8_t rxstream, uint8_t txstream);
     public: virtual void Tick();
-    private: void TickRead();
-    private: void TickWrite();
-    public: virtual int StartRead();
-    public: virtual int StartWrite(uint16_t count);
+    private: int StartWrite();
+    private: int ContinueWrite();
+    public: void ExecuteCommand(uint8_t* command, int clen);
 };
 
-// For AB-07
-#define nChannels 1
-CommChannel* CommChannels[nChannels] = {
-    new CommUart(0, 3, 1, 1, 0, 45, 1, 46, 115200, 2000),
-};
+CommUart commUart;
+CommEth commEth;
 
 void CommunicationInit() {
     RCC->AHB3ENR |= 0x00000001;     // Enable MDMA clock
+    commUart.Init(0, 3, 1, 1, 0, 45, 1, 46, 115200, 2000);
+    commEth.Init(1, 2, 3);
 }
 void CommunicationTick() {
-    for (int i=0; i<nChannels; i++) {
-        CommChannels[i]->Tick();
-    }
+    commEth.Tick();
+    commUart.Tick();
 }
 
-CommChannelDma::CommChannelDma(uint8_t index, uint8_t dma, uint8_t rxstream, uint8_t rxchannel, uint8_t txstream, uint8_t txchannel) : CommChannel(index) {
+void CommChannelDma::Init(uint8_t index, uint8_t dma, uint8_t rxstream, uint8_t rxchannel, uint8_t txstream, uint8_t txchannel) {
+    Channel = index;
 	DmaRegs = (dma == 1) ? DMA1 : DMA2;
 	RCC->AHB1ENR |= 1 << (dma - 1);	                // Enable DMA1/2 clock
     RxStream = (DMA_Stream_TypeDef*)((uint8_t*)DmaRegs + 0x0010 + 0x0018 * rxstream);
@@ -111,14 +94,11 @@ void CommChannelDma::StartWriteDma(void* periphreg, void* buf, int len) {
 
 USART_TypeDef* const Uarts[] = { 0, USART1, USART2, USART3, UART4, UART5, USART6 };
 
-CommUart::CommUart(uint8_t index, uint8_t periphindex, uint8_t bus, uint8_t dma, uint8_t rxstream, uint8_t rxchannel, uint8_t txstream, uint8_t txchannel, uint32_t rate, uint16_t intertimeout)
-	: CommChannelDma(index, dma, rxstream, rxchannel, txstream, txchannel)
+void CommUart::Init(uint8_t index, uint8_t periphindex, uint8_t bus, uint8_t dma, uint8_t rxstream, uint8_t rxchannel, uint8_t txstream, uint8_t txchannel, uint32_t rate, uint16_t intertimeout)
 {
-    Inbuf = uartreadbuf; InbufSize = UARTINSIZE;
-    Outbuf = uartwriteheader; OutbufSize = UARTOUTSIZE;
-    Trans.Inb = Inbuf; 
-    Trans.Outb = Outbuf; Trans.Outbl = OutbufSize;
-    Trans.Mbuf.Bufs[0].Addr = Outbuf;
+    CommChannelDma::Init(index, dma, rxstream, rxchannel, txstream, txchannel);
+    Trans.Inb = uartreadbuf; 
+    Trans.Mbuf.Bufs[0].Addr = Trans.Outb = uartwriteheader; Trans.Outbl = UARTOUTSIZE;
     Trans.Mbuf.Count = 0;
     intertime = intertimeout;
     hard = Uarts[periphindex];
@@ -138,11 +118,11 @@ CommUart::CommUart(uint8_t index, uint8_t periphindex, uint8_t bus, uint8_t dma,
 }
 
 void CommUart::TickRead() {
-    int n = InbufSize - ReadCount();
+    int n = UARTINSIZE - ReadCount();
     if (n == 0) return;
     if (received == 0) {
-        InvalidateDCacheIfUsed(Inbuf, 1);
-        if (Inbuf[0] != 0xFD) {StartRead(); return;}      // Garbage
+        InvalidateDCacheIfUsed(Trans.Inb, 1);
+        if (Trans.Inb[0] != 0xFD) {StartRead(); return;}      // Garbage
     }
     if (n != received) {
         received = n;
@@ -154,8 +134,8 @@ void CommUart::TickRead() {
     }
     if (n < 6) return;
     if (readlen == 0) {
-        InvalidateDCacheIfUsed(Inbuf, 6);
-        readlen = *(uint16_t*)&Inbuf[4];
+        InvalidateDCacheIfUsed(Trans.Inb, 6);
+        readlen = *(uint16_t*)&Trans.Inb[4];
         if ((readlen > 128) || (readlen < 8)) {StartRead(); return;}      // Garbage
     }
     if ((n < readlen) || (WriteCount() > 0)) return;
@@ -182,7 +162,7 @@ int CommUart::StartRead() {
 //    uint32_t dummy = hard->ISR;          // Read SR to clear errors
 //    dummy = hard->RDR;                   // Read DR to clear errors
     hard->ICR = 0x0000103F;				// Clear read flags
-    StartReadDma((void*)&hard->RDR, Inbuf, InbufSize);      // Start DMA
+    StartReadDma((void*)&hard->RDR, Trans.Inb, UARTINSIZE);      // Start DMA
     received = readlen = 0;
     hard->CR3 |= (uint16_t)0x0040;		// Enable USART Rx DMA request
 	return 0;
@@ -196,12 +176,12 @@ int CommUart::StartWrite() {
 int CommUart::ContinueWrite() {
     int bu = Trans.BuCount, cnt = 0, li = 0;
     while (1) {
-        int cnt1 = Min(Trans.Mbuf.Bufs[bu].Count - Trans.ByCount, OutbufSize - cnt);
+        int cnt1 = Min(Trans.Mbuf.Bufs[bu].Count - Trans.ByCount, UARTOUTSIZE - cnt);
         uint32_t CTCR = ((cnt & 3) || (cnt1 & 3)) ? 0x7000000A : 0x700C0AAA;        // Software request, TRGM Full Transfer, byte : 32-bit, no burst, source/target increment 
         uint32_t addr = (uint32_t)(Trans.Mbuf.Bufs[bu].Addr + Trans.ByCount);
 		Mdma::InitLink(uartlist[li], CTCR, cnt1, addr, (uint32_t)(uartwritebuf + cnt), 0, (uint32_t)&uartlist[li+1], ((addr < 0x20000000) || (addr >= 0x24000000)) ? 0 : 0x00010000);
         cnt += cnt1;
-        if (cnt == OutbufSize) {
+        if (cnt == UARTOUTSIZE) {
             if (cnt1 == Trans.Mbuf.Bufs[bu].Count - Trans.ByCount) {
                 Trans.BuCount = bu + 1; Trans.ByCount = 0;
             } else {
@@ -231,59 +211,72 @@ int CommUart::ContinueWrite() {
 	return 0;
 }
 
-// void CommEth::TickRead() {
-//     int n = InbufSize - ReadCount();
-//     if (n == 0) return;
-//     if (received == 0) {
-//         InvalidateDCacheIfUsed(Inbuf, 1);
-//         if (Inbuf[0] != 0xFD) {StartRead(); return;}      // Garbage
-//     }
-//     if (n != received) {
-//         received = n;
-//         intercount = 0;
-//     } else {
-//         if (++intercount > intertime) {
-//             StartRead(); return;  // Internal timeout
-//         }    
-//     }
-//     if (n < 6) return;
-//     if (readlen == 0) {
-//         InvalidateDCacheIfUsed(Inbuf, 6);
-//         readlen = *(uint16_t*)&Inbuf[4];
-//         if ((readlen > 128) || (readlen < 8)) {StartRead(); return;}      // Garbage
-//     }
-//     if ((n < readlen) || (WriteCount() > 0)) return;
-//     InvalidateDCacheIfUsed(Inbuf, readlen);
-//    	CommandExecute((uint8_t*)Inbuf, readlen, this);
-//     StartRead();
-// }
-
-// void CommEth::TickWrite() {
-//     if (SaDma && !BusyWrite()) {
-//         if (SaDma->pCounter < SaDma->pCount) {
-//             BufStruct& p = SaDma->Packets[SaDma->pCounter++];
-//             uint8_t dtcm = (uint32_t)p.Addr < 0x20020000;
-//             if (dtcm) {
-//     			Mdma::InitHard(TxMdma, 0x00000040, 0x700C0AAA, p.Count, (uint32_t)p.Addr, (uint32_t)Outbuf, 0, 0, 0x00010000);
-//                 Mdma::Start(TxMdma);
-//                 StartWriteDma((void*)&hard->TDR, Outbuf, p.Count);
-//             } else {
-//                 StartWriteDma((void*)&hard->TDR, p.Addr, p.Count);
-//             }
-//         } else {
-//             SaDma->pCount = 0;
-//             SaDma = 0;
-//         }
-//     }
-// }
+void CommEth::Init(uint8_t index, uint8_t rxstream, uint8_t txstream)
+{
+    Channel = index;
+    Trans.Mbuf.Bufs[0].Addr = Trans.Outb = ethwriteheader; Trans.Outbl = ETH_TX_BUFFER_SIZE;
+    Trans.Mbuf.Count = 0;
+    RxMdma = (MDMA_Channel_TypeDef*)((uint8_t*)MDMA + 0x0040 + 0x0040 * rxstream);
+    TxMdma = (MDMA_Channel_TypeDef*)((uint8_t*)MDMA + 0x0040 + 0x0040 * txstream);
+}
 
 void CommEth::Tick() {
     EthTick();
-//    TickWrite();
 }
 
-void EthCallback(uint8_t* data, int len) {
-    TransactionStruct* trans = &CommChannels[1]->Trans; 
-    trans->Inb = data; trans->Inbl = len;
-    CommandExecute(trans);    
+int CommEth::StartWrite() {
+    Trans.BuCount = Trans.ByCount = 0;
+    ContinueWrite();
+}
+
+int CommEth::ContinueWrite() {
+    int bu = Trans.BuCount, cnt = 0, li = 0;
+    uint8_t* txbuf;
+    while (1) {
+        int cnt1 = Min(Trans.Mbuf.Bufs[bu].Count - Trans.ByCount, ETH_TX_BUFFER_SIZE - cnt);
+        uint32_t CTCR = ((cnt & 3) || (cnt1 & 3)) ? 0x7000000A : 0x700C0AAA;        // Software request, TRGM Full Transfer, byte : 32-bit, no burst, source/target increment 
+        uint32_t addr = (uint32_t)(Trans.Mbuf.Bufs[bu].Addr + Trans.ByCount);
+		Mdma::InitLink(ethlist[li], CTCR, cnt1, addr, (uint32_t)cnt, 0, (uint32_t)&ethlist[li+1], ((addr < 0x20000000) || (addr >= 0x24000000)) ? 0 : 0x00010000);
+        cnt += cnt1;
+        if (cnt == ETH_TX_BUFFER_SIZE) {
+            txbuf = EthTxAlloc(ETH_TX_BUFFER_SIZE);            
+            if (txbuf == 0) return 0;
+            if (cnt1 == Trans.Mbuf.Bufs[bu].Count - Trans.ByCount) {
+                Trans.BuCount = bu + 1; Trans.ByCount = 0;
+            } else {
+                Trans.BuCount = bu; Trans.ByCount += cnt1;
+            }
+            ethlist[li].CLAR = 0;
+            li++;
+            break;
+        }
+        if (++bu == Trans.Mbuf.Count) {
+            txbuf = EthTxAlloc(cnt);            
+            if (txbuf == 0) return 0;
+            Trans.Mbuf.Count = 0;
+            ethlist[li].CLAR = 0;
+            li++;
+            break;
+        }
+        Trans.ByCount = 0;
+        li++;
+    }
+    if (li > 0) {
+        for (int i = 0; i < li; i++) ethlist[i].CDAR += (uint32_t)txbuf;
+        Mdma::InitHard(TxMdma, 0x00000040, ethlist[0]);
+        Mdma::Start(TxMdma);
+        EthSend();
+        if (Trans.Mbuf.Count == 0) EthTxEnd();
+    }
+	return 0;
+}
+
+void CommEth::ExecuteCommand(uint8_t* command, int clen) {
+    Trans.Inb = command; Trans.Inbl = clen; 
+    CommandExecute(&Trans); 
+    StartWrite();   
+}
+
+void EthCallback(uint8_t* command, int clen) {
+    commEth.ExecuteCommand(command, clen);    
 }

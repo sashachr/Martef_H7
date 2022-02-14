@@ -57,13 +57,12 @@ class Mdma {
 };
 
 class CommChannel {
-    public: uint8_t *Inbuf, *Outbuf; 
-    public: uint16_t InbufSize, OutbufSize; 
+    // public: uint8_t *Inbuf, *Outbuf; 
+    // public: uint16_t InbufSize, OutbufSize; 
 	protected: uint8_t Channel;
     public: MDMA_Channel_TypeDef* RxMdma;
     public: MDMA_Channel_TypeDef* TxMdma;
     public: TransactionStruct Trans;
-	protected: CommChannel(uint8_t index) : Channel(index) {}
     public: virtual void Tick() = 0;
     public: virtual int StartRead() {return 0;}
     public: virtual int StartWrite() {return 0;}
@@ -80,7 +79,7 @@ class CommChannelDma : public CommChannel {
     uint32_t volatile* RxStatus;
     uint32_t RxClearMask, RxReadyMask;
 
-	protected: CommChannelDma(uint8_t index, uint8_t dma, uint8_t rxstream, uint8_t rxchannel, uint8_t txstream, uint8_t txchannel);
+	protected: void Init(uint8_t index, uint8_t dma, uint8_t rxstream, uint8_t rxchannel, uint8_t txstream, uint8_t txchannel);
     protected: void DmaInit(int dma, int rxstream, int rxchannel, int txstream, int txchannel) {}
     protected: void StartReadDma(void* periphreg, void* buf, int len);
     protected: void StartWriteDma(void* periphreg, void* buf, int len);
@@ -94,6 +93,6 @@ class CommChannelDma : public CommChannel {
 void CommunicationTick();
 void CommunicationInit();
 
-extern "C" void EthCallback(uint8_t* data, int len);
+extern "C" void EthCallback(uint8_t* command, int clen);
 
 extern CommChannel* CommChannels[];
