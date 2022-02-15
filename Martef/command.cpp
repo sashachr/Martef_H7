@@ -59,10 +59,10 @@ const static GUID emptyguid { 0, 0, 0, { 0, 0, 0, 0, 0, 0, 0, 0 } };
 const uint8_t* Strings[nstrings] = {
 	ProductString,
 	ManufacturerString,
-	SerialNumberString, 
+	0, //SerialNumberString, 
 	GitVersion, 
 	0,
-	ApplicationString,
+	0, //ApplicationString,
 	CdfString, // Controller Definition File
 };
 uint16_t tstrl = 0;
@@ -286,7 +286,7 @@ void FdProtocol(TransactionStruct* t) {
                 case 1:    // Erase
         			if (clen != 12) BREAK(MRE_FORMAT)
                     if (ind+count > 3) BREAK(MRE_ILLEGALINDEX)
-                    for (int i=0; i<count; i++) if (FlashUpgradeErase(ind+i) != 0) BREAK(MRE_FLASHERASEFAILED)
+                    for (uint32_t i=0; i<count; i++) if (FlashUpgradeErase(ind+i) != 0) BREAK(MRE_FLASHERASEFAILED)
                     break;
                 case 2:     // Write
         			if (clen != 12+(count<<2)) BREAK(MRE_FORMAT)

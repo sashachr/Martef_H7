@@ -174,40 +174,42 @@ int CommUart::StartWrite() {
 }
 
 int CommUart::ContinueWrite() {
-    int bu = Trans.BuCount, cnt = 0, li = 0;
+    int cnt = 0, li = 0;
+    uint8_t final;
     while (1) {
-        int cnt1 = Min(Trans.Mbuf.Bufs[bu].Count - Trans.ByCount, UARTOUTSIZE - cnt);
-        uint32_t CTCR = ((cnt & 3) || (cnt1 & 3)) ? 0x7000000A : 0x700C0AAA;        // Software request, TRGM Full Transfer, byte : 32-bit, no burst, source/target increment 
-        uint32_t addr = (uint32_t)(Trans.Mbuf.Bufs[bu].Addr + Trans.ByCount);
-		Mdma::InitLink(uartlist[li], CTCR, cnt1, addr, (uint32_t)(uartwritebuf + cnt), 0, (uint32_t)&uartlist[li+1], ((addr < 0x20000000) || (addr >= 0x24000000)) ? 0 : 0x00010000);
-        cnt += cnt1;
-        if (cnt == UARTOUTSIZE) {
-            if (cnt1 == Trans.Mbuf.Bufs[bu].Count - Trans.ByCount) {
-                Trans.BuCount = bu + 1; Trans.ByCount = 0;
+        int chunk = Trans.Mbuf.Bufs[Trans.BuCount].Count - Trans.ByCount;
+        int cnt1 = cnt + chunk;
+        int8_t full = cnt1 >= UARTOUTSIZE, cmpr = cnt1 <= UARTOUTSIZE; 
+        final = cmpr && (Trans.BuCount + 1 == Trans.Mbuf.Count);
+        if (full) chunk = UARTOUTSIZE - cnt;
+        uint32_t CTCR = (!(cnt & 3) && (full || !(cnt1 & 3))) ? 0x700C0AAA : 0x7000000A;        // Software request, TRGM Full Transfer, 32-bit : byte, no burst, source/target increment 
+        uint32_t addr = (uint32_t)(Trans.Mbuf.Bufs[Trans.BuCount].Addr + Trans.ByCount);
+        if (full || final) {
+    		Mdma::InitLink(uartlist[li++], CTCR, chunk, addr, (uint32_t)(uartwritebuf + cnt), 0, 0, ((addr < 0x20000000) || (addr >= 0x24000000)) ? 0 : 0x00010000);
+            if (final) {
+                Trans.Mbuf.Count = 0;
+            } else if (cmpr) {
+                Trans.BuCount++; Trans.ByCount = 0;
             } else {
-                Trans.BuCount = bu; Trans.ByCount += cnt1;
+                Trans.ByCount += chunk;
             }
-            uartlist[li].CLAR = 0;
-            li++;
+            cnt += chunk;
             break;
-        }
-        if (++bu == Trans.Mbuf.Count) {
-            Trans.Mbuf.Count = 0;
-            uartlist[li].CLAR = 0;
+        } else {
+    		Mdma::InitLink(uartlist[li], CTCR, cnt1, addr, (uint32_t)(uartwritebuf + cnt), 0, (uint32_t)&uartlist[li+1], ((addr < 0x20000000) || (addr >= 0x24000000)) ? 0 : 0x00010000);
+            Trans.BuCount++; Trans.ByCount = 0;
+            cnt += chunk;
             li++;
-            break;
         }
-        Trans.ByCount = 0;
-        li++;
     }
     if (li > 0) {
         Mdma::InitHard(TxMdma, 0x00000040, uartlist[0]);
         Mdma::Start(TxMdma);
+        hard->CR3 &= (uint16_t)~0x0080;		// Disable USART Tx DMA request
+        StartWriteDma((void*)&hard->TDR, uartwritebuf, cnt);
+        hard->CR3 |= (uint16_t)0x0080;		// Enable USART Tx DMA requests
+        hard->ISR = (uint16_t)~0x0040;		// Clear TC bit in the SR register by writing 0 to it
     }
-    hard->CR3 &= (uint16_t)~0x0080;		// Disable USART Tx DMA request
-    StartWriteDma((void*)&hard->TDR, uartwritebuf, cnt);
-    hard->CR3 |= (uint16_t)0x0080;		// Enable USART Tx DMA requests
-    hard->ISR = (uint16_t)~0x0040;		// Clear TC bit in the SR register by writing 0 to it
 	return 0;
 }
 
@@ -230,43 +232,42 @@ int CommEth::StartWrite() {
 }
 
 int CommEth::ContinueWrite() {
-    int bu = Trans.BuCount, cnt = 0, li = 0;
-    uint8_t* txbuf;
+    uint8_t* txbuf = EthTxAlloc(ETH_TX_BUFFER_SIZE);            
+    if (txbuf == 0) return 0;
+    int cnt = 0, li = 0;
+    uint8_t final;
     while (1) {
-        int cnt1 = Min(Trans.Mbuf.Bufs[bu].Count - Trans.ByCount, ETH_TX_BUFFER_SIZE - cnt);
-        uint32_t CTCR = ((cnt & 3) || (cnt1 & 3)) ? 0x7000000A : 0x700C0AAA;        // Software request, TRGM Full Transfer, byte : 32-bit, no burst, source/target increment 
-        uint32_t addr = (uint32_t)(Trans.Mbuf.Bufs[bu].Addr + Trans.ByCount);
-		Mdma::InitLink(ethlist[li], CTCR, cnt1, addr, (uint32_t)cnt, 0, (uint32_t)&ethlist[li+1], ((addr < 0x20000000) || (addr >= 0x24000000)) ? 0 : 0x00010000);
-        cnt += cnt1;
-        if (cnt == ETH_TX_BUFFER_SIZE) {
-            txbuf = EthTxAlloc(ETH_TX_BUFFER_SIZE);            
-            if (txbuf == 0) return 0;
-            if (cnt1 == Trans.Mbuf.Bufs[bu].Count - Trans.ByCount) {
-                Trans.BuCount = bu + 1; Trans.ByCount = 0;
+        int chunk = Trans.Mbuf.Bufs[Trans.BuCount].Count - Trans.ByCount;
+        int cnt1 = cnt + chunk;
+        int8_t full = cnt1 >= ETH_TX_BUFFER_SIZE, cmpr = cnt1 <= ETH_TX_BUFFER_SIZE; 
+        final = cmpr && (Trans.BuCount + 1 == Trans.Mbuf.Count);
+        if (full) chunk = ETH_TX_BUFFER_SIZE - cnt;
+        uint32_t CTCR = (!(cnt & 3) && (full || !(cnt1 & 3))) ? 0x700C0AAA : 0x7000000A;        // Software request, TRGM Full Transfer, 32-bit : byte, no burst, source/target increment 
+        uint32_t addr = (uint32_t)(Trans.Mbuf.Bufs[Trans.BuCount].Addr + Trans.ByCount);
+        if (full || final) {
+    		Mdma::InitLink(ethlist[li++], CTCR, chunk, addr, (uint32_t)cnt, 0, 0, ((addr < 0x20000000) || (addr >= 0x24000000)) ? 0 : 0x00010000);
+            if (final) {
+                Trans.Mbuf.Count = 0;
+            } else if (cmpr) {
+                Trans.BuCount++; Trans.ByCount = 0;
             } else {
-                Trans.BuCount = bu; Trans.ByCount += cnt1;
+                Trans.ByCount += chunk;
             }
-            ethlist[li].CLAR = 0;
-            li++;
+            cnt += chunk;
             break;
-        }
-        if (++bu == Trans.Mbuf.Count) {
-            txbuf = EthTxAlloc(cnt);            
-            if (txbuf == 0) return 0;
-            Trans.Mbuf.Count = 0;
-            ethlist[li].CLAR = 0;
+        } else {
+    		Mdma::InitLink(ethlist[li], CTCR, cnt1, addr, (uint32_t)cnt, 0, (uint32_t)&ethlist[li+1], ((addr < 0x20000000) || (addr >= 0x24000000)) ? 0 : 0x00010000);
+            Trans.BuCount++; Trans.ByCount = 0;
+            cnt += chunk;
             li++;
-            break;
         }
-        Trans.ByCount = 0;
-        li++;
     }
     if (li > 0) {
         for (int i = 0; i < li; i++) ethlist[i].CDAR += (uint32_t)txbuf;
         Mdma::InitHard(TxMdma, 0x00000040, ethlist[0]);
         Mdma::Start(TxMdma);
         EthSend();
-        if (Trans.Mbuf.Count == 0) EthTxEnd();
+        if (final) EthTxEnd();
     }
 	return 0;
 }
