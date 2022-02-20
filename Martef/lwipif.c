@@ -811,7 +811,8 @@ void EthCallback(uint8_t* command, int clen);
   */
 void udp_echoserver_receive_callback(void *arg, struct udp_pcb *upcb, struct pbuf *p, const ip_addr_t *addr, u16_t port)
 {
-  udp_connect(upcb, addr, UDP_CLIENT_PORT);
+  udp_connect(upcb, addr, port);
+  tpcb = upcb;
   EthCallback((uint8_t*)p->payload, p->tot_len);
   pbuf_free(p);
 }

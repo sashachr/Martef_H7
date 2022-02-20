@@ -25,6 +25,7 @@ class CommUart : public CommChannelDma {
 
 class CommEth : public CommChannel {
     uint16_t received, readlen;
+    uint8_t final;
     public: void Init(uint8_t index, uint8_t rxstream, uint8_t txstream);
     public: virtual void Tick();
     private: int StartWrite();
@@ -182,7 +183,7 @@ int CommUart::ContinueWrite() {
         int8_t full = cnt1 >= UARTOUTSIZE, cmpr = cnt1 <= UARTOUTSIZE; 
         final = cmpr && (Trans.BuCount + 1 == Trans.Mbuf.Count);
         if (full) chunk = UARTOUTSIZE - cnt;
-        uint32_t CTCR = (!(cnt & 3) && (full || !(cnt1 & 3))) ? 0x700C0AAA : 0x7000000A;        // Software request, TRGM Full Transfer, 32-bit : byte, no burst, source/target increment 
+        uint32_t CTCR = ((Trans.ByCount & 3) || (cnt & 3) || (chunk & 3)) ? 0x7000000A : 0x700C0AAA;        // Software request, TRGM Full Transfer, 32-bit : byte, no burst, source/target increment
         uint32_t addr = (uint32_t)(Trans.Mbuf.Bufs[Trans.BuCount].Addr + Trans.ByCount);
         if (full || final) {
     		Mdma::InitLink(uartlist[li++], CTCR, chunk, addr, (uint32_t)(uartwritebuf + cnt), 0, 0, ((addr < 0x20000000) || (addr >= 0x24000000)) ? 0 : 0x00010000);
@@ -224,31 +225,41 @@ void CommEth::Init(uint8_t index, uint8_t rxstream, uint8_t txstream)
 
 void CommEth::Tick() {
     EthTick();
+    if (Trans.Mbuf.Count && Mdma::Finished(TxMdma)) {
+        EthSend();
+        if (final) {
+            Trans.Mbuf.Count = 0;
+            EthTxEnd();
+        } else {
+            ContinueWrite();
+        }
+    }
 }
 
 int CommEth::StartWrite() {
+	if (!Trans.Mbuf.Count) return 0;
     Trans.BuCount = Trans.ByCount = 0;
     ContinueWrite();
+    return Trans.Mbuf.Count;
 }
 
 int CommEth::ContinueWrite() {
     uint8_t* txbuf = EthTxAlloc(ETH_TX_BUFFER_SIZE);            
     if (txbuf == 0) return 0;
     int cnt = 0, li = 0;
-    uint8_t final;
     while (1) {
         int chunk = Trans.Mbuf.Bufs[Trans.BuCount].Count - Trans.ByCount;
         int cnt1 = cnt + chunk;
         int8_t full = cnt1 >= ETH_TX_BUFFER_SIZE, cmpr = cnt1 <= ETH_TX_BUFFER_SIZE; 
         final = cmpr && (Trans.BuCount + 1 == Trans.Mbuf.Count);
         if (full) chunk = ETH_TX_BUFFER_SIZE - cnt;
-        uint32_t CTCR = (!(cnt & 3) && (full || !(cnt1 & 3))) ? 0x700C0AAA : 0x7000000A;        // Software request, TRGM Full Transfer, 32-bit : byte, no burst, source/target increment 
+        uint32_t CTCR = ((Trans.ByCount & 3) || (cnt & 3) || (chunk & 3)) ? 0x7000000A : 0x700C0AAA;        // Software request, TRGM Full Transfer, 32-bit : byte, no burst, source/target increment
         uint32_t addr = (uint32_t)(Trans.Mbuf.Bufs[Trans.BuCount].Addr + Trans.ByCount);
         if (full || final) {
     		Mdma::InitLink(ethlist[li++], CTCR, chunk, addr, (uint32_t)cnt, 0, 0, ((addr < 0x20000000) || (addr >= 0x24000000)) ? 0 : 0x00010000);
-            if (final) {
-                Trans.Mbuf.Count = 0;
-            } else if (cmpr) {
+            if (final || cmpr) {
+            //     Trans.Mbuf.Count = 0;
+            // } else if (cmpr) {
                 Trans.BuCount++; Trans.ByCount = 0;
             } else {
                 Trans.ByCount += chunk;
@@ -264,10 +275,8 @@ int CommEth::ContinueWrite() {
     }
     if (li > 0) {
         for (int i = 0; i < li; i++) ethlist[i].CDAR += (uint32_t)txbuf;
-        Mdma::InitHard(TxMdma, 0x00000040, ethlist[0]);
+        Mdma::InitHard(TxMdma, 0x000000C0, ethlist[0]);     // Highest priority
         Mdma::Start(TxMdma);
-        EthSend();
-        if (final) EthTxEnd();
     }
 	return 0;
 }

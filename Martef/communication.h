@@ -54,6 +54,9 @@ class Mdma {
         c->CCR |= 0x00000001;	// Enable
         c->CCR |= 0x00010000;	// Start
     }
+    public: static uint8_t Finished(MDMA_Channel_TypeDef* c) {
+        return (c->CISR & 3) != 0;
+    }
 };
 
 class CommChannel {
