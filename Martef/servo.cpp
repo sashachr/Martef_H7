@@ -73,6 +73,7 @@ void ServoStruct::Init(uint8_t index) {
     NsL = -50; PsL = 50;
     OtL = 2; MtL = 0;
     VelF = 0.9;
+    FaultMask = 0xF808FFFF;
     FaultDisable = 0x07FF0000; 
     RelatedAxes = (1 << NAX) - 1;
 }
