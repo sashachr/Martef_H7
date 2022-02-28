@@ -27,3 +27,4 @@ env/
 # Miscelanous
 .hide/
 gitversion.h
+.settings/language.settings.xml
