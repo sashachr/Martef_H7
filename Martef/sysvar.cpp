@@ -170,8 +170,6 @@ int32_t FlashSave(uint16_t ind, int16_t count, uint32_t* buf) {
         for (; i < count; i++) *buf++ = NONE; \
         return i; \
     }
-#define ServoDirectRead(var) StructDirectRead(Servo, var, NAX)
-
 #define StructDirectReadWrite(struc, var, maxind) \
     StructDirectRead(struc, var, maxind), \
     [](uint16_t ind, uint16_t count, int32_t* buf) -> int32_t {  \
@@ -179,7 +177,19 @@ int32_t FlashSave(uint16_t ind, int16_t count, uint32_t* buf) {
         for (; (i < count) && (j < maxind); i++,j++) if (!IsNan(*buf)) *(int32_t*)&struc[j].var = *buf++; \
         return i; \
     }
+#define StructPropWrite(struc, func, maxind, argtype) \
+    [](uint16_t ind, uint16_t count, int32_t* buf) -> int32_t {  \
+        int16_t i = 0, j = ind; \
+        for (; (i < count) && (j < maxind); i++,j++) if (!IsNan(*buf)) struc[j].func(*(argtype*)buf++); \
+        return i; \
+    }
+
+#define ServoDirectRead(var) StructDirectRead(Servo, var, NAX)
 #define ServoDirectReadWrite(var) StructDirectReadWrite(Servo, var, NAX)
+#define ServoPropWrite(func, argtype) StructPropWrite(Servo, func, NAX, argtype)
+#define MotionDirectRead(var) StructDirectRead(Motions, var, NAX)
+#define MotionDirectReadWrite(var) StructDirectReadWrite(Motions, var, NAX)
+#define MotionPropWrite(func, argtype) StructPropWrite(Motions, func, NAX, argtype)
 
 #define StructDirectReadShort(struc, var, maxind) \
     [](uint16_t i)->int32_t* {return (int32_t*)&struc[i].var;}, \

@@ -112,6 +112,7 @@ public:
 #define FLTB_NLIMIT         0x01000000
 #define FLTB_PLIMIT         0x02000000
 #define FLTB_PEL            0x04000000
+#define FLTB_OPERATION      0x80000000
 
 // Routable variables
 #define RO_TPOS             1
@@ -126,6 +127,10 @@ class MotionBase;
 class ServoStruct {
 public:
     uint8_t Index;
+	uint32_t Gax;				// Bitwise specification of group axes
+	uint8_t Giax[NAX];			// Group axes
+	uint8_t Gnax;				// Number of group axes
+   	uint8_t Groot;				// Index of the group root
     uint8_t InTransition;
     uint32_t RState;
     uint32_t FState;
@@ -184,7 +189,7 @@ public:
     float OtL, MtL;                     // Maximal time of open-loop operation and single motion
     float Teta;                         // Commutation angle
     float RResolution, LResolution;     // Resolution of rotary and linear encoders
-    uint32_t CommutPeriod;                // Commutation period in rotary encoder counts
+    uint32_t CommutPeriod;              // Commutation period in rotary encoder counts
 
     uint8_t TPosRout, RPosRout, TVelRout, VInRout, CInRout;
     float *TPosSource, *RPosSource, *TVelSource, *VInSource, *CInSource;
@@ -202,12 +207,27 @@ public:
 //    uint32_t SafetyBits();
     uint32_t GetError(uint32_t safety, uint8_t severity);
     void SetError(uint32_t error, uint8_t severity);
+    void SetFault(uint32_t fault, uint32_t error = 0);
     void ResetError() { Fault = Error = Severity = 0; }
     uint8_t IsEnabled() { return RState & SM_ENABLE; }
     uint8_t IsPosLoopEnabled() { return (RState & SM_ENABLE) && (RState & SM_POSITIONLOOP); }
-    void SetMotionState(uint8_t stat) { if (stat) RState |= SM_MOTION; else RState &= ~SM_MOTION; }
-    uint8_t SetServoMode(uint32_t mode);
     void SetOlCounter() { OperationCounter = (uint32_t)ceil(OtL * TICKS_IN_SECOND); }
+    void SetMotionState(uint8_t stat) { if (stat) RState |= SM_MOTION; else RState &= ~SM_MOTION; }
+    void Disable();
+    uint8_t SetServoMode(uint32_t mode);
+    uint8_t ValidatePositionLoop();
+    uint8_t GroupValidatePositionLoop();
+	void Group(int32_t gr);
+    void GroupReset(int motion);
+	void GroupReset();
+    ServoStruct& GroupGetServo(int i);
+    void GroupGetTPos(float* to);
+    void GroupGetRPos(float* to);
+    void GroupSetRefs(float* p0, float* c);
+    void StartMotion();
+    void EndMotion();
+    uint8_t GroupTPosChanged();
+    uint8_t TPosChanged() { return TPos != tpos; }
     uint8_t SetTPos(float pos);
     int32_t SetPos(float pos) { RPos = pos; RState = (RState & ~(SM_MOTION)) | (SM_POSITIONLOOP|SM_VELOCITYLOOP|SM_CURRENTLOOP|SM_PWM|SM_ENABLE); SetOlCounter(); return 1;}
     int32_t SetVel(float vel) { VIn = vel; RState = (RState & ~(SM_MOTION|SM_POSITIONLOOP)) | (SM_VELOCITYLOOP|SM_CURRENTLOOP|SM_PWM|SM_ENABLE); SetOlCounter(); return 1;}
@@ -225,19 +245,7 @@ private:
 
 extern ServoStruct Servo[];
 
+inline ServoStruct& ServoStruct::GroupGetServo(int i) { return Servo[Giax[i]]; }
 
 inline void ServoInit() { for (int i = 0; i < NAX; i++) Servo[i].Init(i); }
 inline void ServoTick() { for (int i = 0; i < NAX; i++) Servo[i].Tick(); }
-
-#define ServoSetVar(func) \
-    [](uint16_t ind, uint16_t count, int32_t* buf) -> int32_t {  \
-        int16_t i = 0, j = ind; \
-        for (; (i < count) && (j < NAX); i++,j++) if (!IsNan(*buf)) Servo[j].func(*(float*)buf++); \
-        return i; \
-    }
-#define ServoSetTPos  ServoSetVar(SetTPos)
-#define ServoSetPos  ServoSetVar(SetPos)
-#define ServoSetVel  ServoSetVar(SetVel)
-#define ServoSetCur  ServoSetVar(SetCur)
-#define ServoSetCurQ  ServoSetVar(SetCurQ)
-#define ServoSetTeta  ServoSetVar(SetTeta)

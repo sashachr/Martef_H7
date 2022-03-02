@@ -126,7 +126,7 @@ void PmcuSpi::Init(uint8_t ind, uint8_t ispi, uint8_t idma) {
     rxCompleteFlag = Dma::GetTcMask(idma); txCompleteFlag = Dma::GetTcMask(idma+1); 
     rxFlagMask = Dma::GetFlagMask(idma); txFlagMask = Dma::GetFlagMask(idma+1);
     rxFlags = Dma::GetFlagsReg(idma); txFlags = Dma::GetFlagsReg(idma+1);
-    Spi::Init(spi, 0x00001001, 0x00000000, 0x3000c02f, 0x04400010); // Enable,start, endless, clock/16, dma, 8-byte fifo, 16-bit data, MSB first, CPOL/CPHA=00, DMA requests, master
+    Spi::Init(spi, 0x00001001, 0x00000000, (ispi == 2) ? 0x4000c02f : 0x3000c02f, 0x04400010); // Enable,start, endless, clock/16 (or 32 for SPI2, not clear why), dma, 8-byte fifo, 16-bit data, MSB first, CPOL/CPHA=00, DMA requests, master
     Dma::Init(rxStream, 0x00025400, 10, (void*)&spi->RXDR, inBuf[0]);
     Dma::Init(txStream, 0x00025440, 10, (void*)&spi->TXDR, outBuf[0]);
     iTick = iBuf = 0;
