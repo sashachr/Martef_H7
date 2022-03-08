@@ -12,11 +12,19 @@
 #include "communication.h"
 #include "command.h"
 
-//  FD command structure:
-//	Byte 1: FD
-//	Byte 2: Command
-//	Byte 3,4: ID
+//  FD protocol:
+//	Byte 0: FD
+//	Byte 1: Command/reply
+//	Byte 2,3: ID
 //	Byte 4,5: Length
+
+//  E3 protocol
+//	Byte 0: E3
+//	Byte 1: Number of sections
+//	Byte 2: Section number
+//	Byte 3,4,5: Total length
+//	Byte 6,7: Section length
+//	Byte 8,9: Section offset
 
 // Commands 
 enum MRC_COMMAND {
@@ -322,6 +330,8 @@ void FdProtocol(TransactionStruct* t) {
 
 void CommandExecute(TransactionStruct* t)
 {
+	if (t->Inb[0] == 0xE3) { t->Inb += 10; t->Inbl -= 10; }
+
 	if (t->Inb[0] == 0xFD) {
 		FdProtocol(t);
 	}
