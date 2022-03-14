@@ -780,6 +780,12 @@ void DHCP_Periodic_Handle(struct netif *netif)
 }
 #endif
 
+uint32_t trace[1024];
+uint32_t itrace;
+uint32_t nexti(uint32_t i) { if (++i == 1024) i = 0; return i; }
+uint32_t previ(uint32_t i) { if (i-- == 0) i = 1023; return i; }
+void Trace(uint32_t t) {trace[itrace] = (uint32_t)t; itrace = nexti(itrace);}
+
 // ************* Interface functions for Martef command processing
 // Scratchpad elements
 struct udp_pcb *tpcb;
@@ -787,14 +793,22 @@ struct pbuf* tbuf;
 
 uint8_t* EthTxAlloc(uint16_t len) {
   tbuf = pbuf_alloc(PBUF_TRANSPORT, len, PBUF_RAM);
+  if (tbuf || trace[previ(itrace)]) Trace((uint32_t)tbuf); 
   return (tbuf == 0) ? 0 : (uint8_t*)tbuf->payload;
+}
+void EthRealloc(uint16_t len) {
+  // pbuf_realloc(tbuf, len);
+  tbuf->len = tbuf->tot_len = len;
 }
 uint8_t EthSend() {
   int8_t res = udp_send(tpcb, tbuf);
+  // tbuf->len = tbuf->tot_len = ETH_TX_BUFFER_SIZE;
+  Trace((uint32_t)tbuf | 0x80000000); 
   pbuf_free(tbuf);
 }
 void EthTxEnd() {
     udp_disconnect(tpcb);
+    tpcb = 0;
 }
 // ************* UDP Callback from udp_echoserver.c
 
@@ -809,12 +823,15 @@ void EthCallback(uint8_t* command, int clen);
   * @param port the remote port from which the packet was received
   * @retval None
   */
-void udp_echoserver_receive_callback(void *arg, struct udp_pcb *upcb, struct pbuf *p, const ip_addr_t *addr, u16_t port)
-{
-  udp_connect(upcb, addr, port);
-  tpcb = upcb;
-  EthCallback((uint8_t*)p->payload, p->tot_len);
-  pbuf_free(p);
+void udp_echoserver_receive_callback(void *arg, struct udp_pcb *upcb, struct pbuf *p, const ip_addr_t *addr, u16_t port) {
+    if (tpcb != 0) {
+        pbuf_free(p);
+        return;
+    }
+    udp_connect(upcb, addr, port);
+    tpcb = upcb;
+    EthCallback((uint8_t*)p->payload, p->tot_len);
+    pbuf_free(p);
 }
 
 /**

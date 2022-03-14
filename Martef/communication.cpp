@@ -101,6 +101,7 @@ void CommUart::Init(uint8_t index, uint8_t periphindex, uint8_t bus, uint8_t dma
     Trans.Inb = uartreadbuf; 
     Trans.Mbuf.Bufs[0].Addr = Trans.Outb = uartwriteheader; Trans.Outbl = UARTOUTSIZE;
     Trans.Mbuf.Count = 0;
+    Trans.Mbuf.TerminationFlag = 0;
     intertime = intertimeout;
     hard = Uarts[periphindex];
     if (bus == 1) {
@@ -189,6 +190,7 @@ int CommUart::ContinueWrite() {
     		Mdma::InitLink(uartlist[li++], CTCR, chunk, addr, (uint32_t)(uartwritebuf + cnt), 0, 0, ((addr < 0x20000000) || (addr >= 0x24000000)) ? 0 : 0x00010000);
             if (final) {
                 Trans.Mbuf.Count = 0;
+                if (Trans.Mbuf.TerminationFlag) *Trans.Mbuf.TerminationFlag = 0;
             } else if (cmpr) {
                 Trans.BuCount++; Trans.ByCount = 0;
             } else {
@@ -219,6 +221,7 @@ void CommEth::Init(uint8_t index, uint8_t rxstream, uint8_t txstream)
     Channel = index;
     Trans.Mbuf.Bufs[0].Addr = Trans.Outb = ethwriteheader; Trans.Outbl = ETH_TX_BUFFER_SIZE;
     Trans.Mbuf.Count = 0;
+    Trans.Mbuf.TerminationFlag = 0;
     RxMdma = (MDMA_Channel_TypeDef*)((uint8_t*)MDMA + 0x0040 + 0x0040 * rxstream);
     TxMdma = (MDMA_Channel_TypeDef*)((uint8_t*)MDMA + 0x0040 + 0x0040 * txstream);
 }
@@ -229,6 +232,7 @@ void CommEth::Tick() {
         EthSend();
         if (final) {
             Trans.Mbuf.Count = 0;
+            if (Trans.Mbuf.TerminationFlag) *Trans.Mbuf.TerminationFlag = 0;
             EthTxEnd();
         } else {
             ContinueWrite();
@@ -265,6 +269,7 @@ int CommEth::ContinueWrite() {
                 Trans.ByCount += chunk;
             }
             cnt += chunk;
+            EthRealloc(cnt);
             break;
         } else {
     		Mdma::InitLink(ethlist[li], CTCR, cnt1, addr, (uint32_t)cnt, 0, (uint32_t)&ethlist[li+1], ((addr < 0x20000000) || (addr >= 0x24000000)) ? 0 : 0x00010000);

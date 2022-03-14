@@ -61,6 +61,7 @@ void ethernet_link_check_state(struct netif *netif);
 void EthInit(void);
 void EthTick(void);
 uint8_t* EthTxAlloc(uint16_t len);
+void EthRealloc(uint16_t len);
 uint8_t EthSend();
 void EthTxEnd();
 
