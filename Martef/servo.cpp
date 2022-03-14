@@ -140,7 +140,7 @@ void ServoStruct::Tick() {
         if (IsEnabled()) VIn = *VInSource; else { VInRout = 0; VInSource = 0; }
     }
     if (CInSource) {
-        if (IsEnabled()) CIn = *CInSource; else { CInRout = 0; CInSource = 0; }
+        if (IsEnabled()) SetCur(*CInSource); else { CInRout = 0; CInSource = 0; }
     }
 }
 

@@ -94,6 +94,7 @@ void FdProtocol(TransactionStruct* t) {
 	*(uint16_t*)(rep + 4) = 8;		// Default prompt assumed
 	*(uint16_t*)(rep + 6) = 0;		// Default prompt assumed
 	t->Mbuf.Count = 1;
+	t->Mbuf.TerminationFlag = 0;
 	t->Mbuf.Bufs[0].Addr = rep;		// Default prompt assumed
 	t->Mbuf.Bufs[0].Count = 8;		// Default prompt assumed
 	switch (com[1]) {
@@ -141,14 +142,15 @@ void FdProtocol(TransactionStruct* t) {
 				int32_t acount = vd->read(ind, count, (int32_t*)(rep+12));
 				if (acount >= 0) {
 		            *(uint16_t*)(rep + 10) = acount;
-					*(uint16_t*)(rep + 4) = 12 + (acount << 2);
-					t->Mbuf.Bufs[0].Count = (acount << 2);
-					t->Mbuf.Count = 1;
+					repl = 12 + (count << 2);
+					*(uint16_t*)(rep+4) = repl;
+					t->Mbuf.Bufs[0].Count = repl;
 				} else {
 					MultiBufStruct* mb = (MultiBufStruct*)*(uint32_t*)(rep+12);
 					t->Mbuf.Bufs[0].Count = 12;
 					t->Mbuf.Count = mb->Count + 1;
-					MemCpy32(&t->Mbuf.Bufs[1], mb->Bufs, mb->Count << 3);
+					t->Mbuf.TerminationFlag = mb->TerminationFlag;
+					MemCpy32(&t->Mbuf.Bufs[1], mb->Bufs, mb->Count << 1);
 					uint16_t len = 0;
 					for (int i = 0; i < mb->Count; i++) len += mb->Bufs[i].Count;
 		            *(uint16_t*)(rep + 10) = len >> 2;
@@ -227,6 +229,7 @@ void FdProtocol(TransactionStruct* t) {
 			*(uint16_t*)(rep+4) = repl;
 			t->Mbuf.Bufs[0].Count = repl;
 			t->Mbuf.Count = 1;
+			t->Mbuf.TerminationFlag = 0;
 		    CleanDCacheIfUsed((uint32_t*)rep, repl);
 			break;
 		}

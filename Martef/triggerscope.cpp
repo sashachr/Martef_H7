@@ -129,7 +129,7 @@ void ScopeStruct::Init() {
         uint16_t id = *(uint16_t*)&Config.Sig[i];
         if (id < 10000) { // System
             Vardef* v = GetVarDef(Config.Sig[i]);
-            Sig[i].Var = (v == 0) ? &dummy : v->addr(*((uint16_t*)&Config.Sig[i]+1));
+            Sig[i].Var = ((v == 0) || (v->addr == 0)) ? &dummy : v->addr(*((uint16_t*)&Config.Sig[i]+1));
             Sig[i].Convert = (v == 0) ? 0 : intConvert[GetVarType(v)];
         } else if (id < 20000) { // User Scalar
             id -= 10000;
@@ -192,6 +192,7 @@ uint16_t ScopeStruct::FillSend(uint8_t buf) {
         send->Bufs[2].Count = 4 * Sweep.iStore * Config.nSignals;
     }
     send->Count = (Sweep.iStore == 0) ? 2 : 3;
+    send->TerminationFlag = &send->Count;
     SendBuf = buf;
 	return 0;
 }

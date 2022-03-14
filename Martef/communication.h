@@ -7,6 +7,7 @@ struct BufStruct {
 };
 struct MultiBufStruct {
     uint8_t Count;
+    uint8_t* TerminationFlag;
     struct BufStruct Bufs[9];
 };
 // struct SaDmaStruct {
