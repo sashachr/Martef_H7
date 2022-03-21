@@ -42,8 +42,6 @@ void MartefInit() {
 }
 
 void MartefTick() {
-//    GPIOF->BSRR = 0x00000040;           // Set SPI5_NSS
-//    GPIOF->BSRR = 0x40008000;           // Set TP1, reset TP2
     TimeTickStart();
     if (!Time.initialDelayCount) {
         PmcuSpiTickStart();
@@ -52,8 +50,12 @@ void MartefTick() {
 //        LedStatus.Tick();
         for (int i = 0; i < 2; i++) Signals[i].Tick();
         Scope.Tick();
-        EthTick();
+//  GPIOF->BSRR = 0x00008000;                  // F15 = 1 
         CommunicationTick();
+//  GPIOF->BSRR = 0x80000000;                  // F15 = 0 
+//  GPIOF->BSRR = 0x00008000;                  // F15 = 1 
+        EthTick();
+//  GPIOF->BSRR = 0x80000000;                  // F15 = 0 
         PmcuSpiTickEnd();
     }
     TimeTickEnd();

@@ -226,8 +226,8 @@ private:
 extern ServoStruct Servo[];
 
 
-inline void ServoInit() { for (int i = 0; i < NAX; i++) Servo[i].Init(i); }
-inline void ServoTick() { for (int i = 0; i < NAX; i++) Servo[i].Tick(); }
+inline void ServoInit() { for (int i = 0; i < 2; i++) Servo[i].Init(i); }
+inline void ServoTick() { for (int i = 0; i < 2; i++) Servo[i].Tick(); }
 
 #define ServoSetVar(func) \
     [](uint16_t ind, uint16_t count, int32_t* buf) -> int32_t {  \

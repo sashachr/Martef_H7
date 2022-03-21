@@ -113,6 +113,12 @@ __attribute__((section(".ramD1"))) static uint32_t spiBufs[4 * 12 * NAX];
 
 PmcuSpi pmcu[NAX];
 
+static uint32_t trace[1024];
+static uint32_t itrace;
+static uint32_t nexti(uint32_t i) { if (++i == 1024) i = 0; return i; }
+static uint32_t previ(uint32_t i) { if (i-- == 0) i = 1023; return i; }
+static void Trace(uint32_t t) {trace[itrace] = (uint32_t)t; itrace = nexti(itrace);}
+
 void PmcuSpi::Init(uint8_t ind, uint8_t ispi, uint8_t idma) {
     index  = ind;
     servo = &Servo[ind];
@@ -126,30 +132,43 @@ void PmcuSpi::Init(uint8_t ind, uint8_t ispi, uint8_t idma) {
     rxCompleteFlag = Dma::GetTcMask(idma); txCompleteFlag = Dma::GetTcMask(idma+1); 
     rxFlagMask = Dma::GetFlagMask(idma); txFlagMask = Dma::GetFlagMask(idma+1);
     rxFlags = Dma::GetFlagsReg(idma); txFlags = Dma::GetFlagsReg(idma+1);
-    Spi::Init(spi, 0x00001001, 0x00000000, 0x3000c02f, 0x04400010); // Enable,start, endless, clock/16, dma, 8-byte fifo, 16-bit data, MSB first, CPOL/CPHA=00, DMA requests, master
+    // Spi::Init(spi, 0x00001001, 0x00000014, (ispi == 2) ? 0x404fc02f : 0x304fc02f, 0x04400010); // Enable,start, 20 frames, clock/16 (or 32 for SPI2, not clear why), dma, 8-byte fifo, 16-bit data, MSB first, CPOL/CPHA=00, DMA requests, master
+    Spi::Init(spi, 0x00001000, 0x00000000, (ispi == 2) ? 0x4000c02f : 0x3000c02f, 0x04400010); // Enable,start, endless, clock/16, dma, 8-byte fifo, 16-bit data, MSB first, CPOL/CPHA=00, DMA requests, master
     Dma::Init(rxStream, 0x00025400, 10, (void*)&spi->RXDR, inBuf[0]);
     Dma::Init(txStream, 0x00025440, 10, (void*)&spi->TXDR, outBuf[0]);
     iTick = iBuf = 0;
 }
 
 void PmcuSpi::TickStart() {
-    uint32_t valid = IsReadComplete();
+	uint32_t flg, rndtr, tndtr;
+	if (index == 0) {
+		flg = *rxFlags; rndtr = rxStream->NDTR; tndtr = txStream->NDTR;
+		cnt++;
+	}
+    Valid = IsReadComplete();
+    if (!Valid) {
+        Trace(cnt);
+        cnt = 0;
+    }
     // uint32_t index = Time.Tick & 0x0000001;
-    Spi::Stop(spi);
+    Dma::Disable(rxStream); Dma::Disable(txStream); 
     *(rxFlags + 2) = rxFlagMask | txFlagMask;
+    Spi::Stop(spi);
     Dma::ReInit(rxStream, 10, inBuf[iBuf]);
     Dma::ReInit(txStream, 10, outBuf[iBuf]);
-    iBuf ^= 1;
+    Dma::Enable(rxStream);
+    Spi::EnableDma(spi);
     Spi::Start(spi);
-    DecipherReport(inBuf[iBuf]);
+    iBuf ^= 1;
 }
 
 void PmcuSpi::TickEnd() {
     EncipherCommand(outBuf[iBuf]);
 }
 
-void PmcuSpi::DecipherReport(uint32_t* buf) {
+void PmcuSpi::DecipherReport() {
 	if (servo->Index > 1) return;
+    uint32_t* buf = inBuf[iBuf];
     servo->FState = buf[0];
     servo->FPos = *(float*)(buf+1);
     servo->FPos1 = *(float*)(buf+2);
@@ -189,10 +208,11 @@ void PmcuSpi::EncipherCommand(uint32_t* buf) {
 }
 
 void PmcuSpiTickStart() {
-    GPIOF->BSRR = 0x00004040;                  // F6 = 1 (NSS)
+    GPIOF->BSRR = 0x00004040;                  // F6/14 = 1 (NSS)
     for (int i=0; i<2; i++) pmcu[i].TickStart();
-    GPIOF->BSRR = 0x40400000;                  // F6 = 0 (NSS)
-    for (int i=0; i<2; i++) pmcu[i].EnableDma();
+    GPIOF->BSRR = 0x40400000;                  // F6/14 = 0 (NSS)
+    for (int i=0; i<2; i++) pmcu[i].StartTransfer();
+    for (int i=0; i<2; i++) if (pmcu[i].Valid) pmcu[i].DecipherReport();
 }
 void PmcuSpiTickEnd() {
     for (int i=0; i<2; i++) pmcu[i].TickEnd();

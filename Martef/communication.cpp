@@ -227,9 +227,13 @@ void CommEth::Init(uint8_t index, uint8_t rxstream, uint8_t txstream)
 }
 
 void CommEth::Tick() {
-    EthTick();
+    // EthTick();
     if (Trans.Mbuf.Count && Mdma::Finished(TxMdma)) {
+//   GPIOF->BSRR = 0x80000000;                  // F15 = 0 
+//   GPIOF->BSRR = 0x00008000;                  // F15 = 1 
         EthSend();
+//   GPIOF->BSRR = 0x80000000;                  // F15 = 0 
+//   GPIOF->BSRR = 0x00008000;                  // F15 = 1 
         if (final) {
             Trans.Mbuf.Count = 0;
             if (Trans.Mbuf.TerminationFlag) *Trans.Mbuf.TerminationFlag = 0;
@@ -248,6 +252,8 @@ int CommEth::StartWrite() {
 }
 
 int CommEth::ContinueWrite() {
+//   GPIOF->BSRR = 0x80000000;                  // F15 = 0 
+  GPIOF->BSRR = 0x00008000;                  // F15 = 1 
     uint8_t* txbuf = EthTxAlloc(ETH_TX_BUFFER_SIZE);            
     if (txbuf == 0) return 0;
     int cnt = 0, li = 0;
@@ -283,6 +289,8 @@ int CommEth::ContinueWrite() {
         Mdma::InitHard(TxMdma, 0x000000C0, ethlist[0]);     // Highest priority
         Mdma::Start(TxMdma);
     }
+//   GPIOF->BSRR = 0x00008000;                  // F15 = 1 
+  GPIOF->BSRR = 0x80000000;                  // F15 = 0 
 	return 0;
 }
 

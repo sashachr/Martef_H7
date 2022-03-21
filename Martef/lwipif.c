@@ -502,8 +502,9 @@ void ethernet_link_check_state(struct netif *netif)
   uint32_t PHYLinkState;
   uint32_t linkchanged = 0, speed = 0, duplex =0;
   
-  PHYLinkState = LAN8742_GetLinkState(&LAN8742);
-  
+  // PHYLinkState = LAN8742_GetLinkState(&LAN8742);
+  PHYLinkState = LAN8742_STATUS_100MBITS_FULLDUPLEX;
+
   if(netif_is_link_up(netif) && (PHYLinkState <= LAN8742_STATUS_LINK_DOWN))
   {
     HAL_ETH_Stop(&EthHandle);
@@ -639,8 +640,8 @@ void ethernet_link_status_updated(struct netif *netif)
     sprintf((char *)iptxt, "%s", ip4addr_ntoa(netif_ip4_addr(netif)));
     LCD_UsrTrace ("Static IP address: %s\n", iptxt);
 #else
-    BSP_LED_On(LED1);
-    BSP_LED_Off(LED2);
+    // BSP_LED_On(LED1);
+    // BSP_LED_Off(LED2);
 #endif /* LWIP_DHCP */
   }
   else
@@ -651,8 +652,8 @@ void ethernet_link_status_updated(struct netif *netif)
 #elif defined(USE_LCD)
     LCD_UsrTrace ("The network cable is not connected \n");
 #else
-    BSP_LED_Off(LED1);
-    BSP_LED_On(LED2);
+    // BSP_LED_Off(LED1);
+    // BSP_LED_On(LED2);
 #endif /* LWIP_DHCP */
   }
 }

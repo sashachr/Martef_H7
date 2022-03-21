@@ -53,7 +53,7 @@ uint32_t errors[33] = {
 void ServoStruct::Init(uint8_t index) {
     Index = index;
     Motion = NewMotion(index);
-    InitialCounter = 1000;
+    InitialCounter = 10000;
     Vel = 10.F; Acc = 100.F; Dec = 100.F; KDec = 100.F; Jerk = 1000.F;
     RResolution = 5.6340E-5F; 
     LResolution = 0.001171875F;
@@ -104,6 +104,7 @@ void ServoStruct::Tick() {
     if (TPosSource) {
         if (IsEnabled()) SetTPos(*TPosSource); else { TPosRout = 0; TPosSource = 0; }
     }
+    if (--InitialCounter == 0) ResetError();
     if ((RState & 1) != enable) {
         enable = RState & 1;
         if (enable) ResetError();     
@@ -122,7 +123,15 @@ void ServoStruct::Tick() {
         Pe = RVel = 0;
     }
     ((uint16_t*)&PreFault)[1] = ((uint16_t*)&FState)[1];
-    Fault |= PreFault & ~FaultMask;
+    if (Index == 0) {
+        if (PreFault) {
+            Fault |= PreFault & ~FaultMask;
+        }
+    } else {
+        if (PreFault) {
+            Fault |= PreFault & ~FaultMask;
+        }
+    }
     uint32_t severity = (Fault & FaultDisable) ? 3 : (Fault & FaultKill) ? 1 : 0;
     if (severity > Severity) {
         SetError(GetError(Fault, severity), severity);

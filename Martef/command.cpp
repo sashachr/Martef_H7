@@ -336,8 +336,10 @@ void CommandExecute(TransactionStruct* t)
 	if (t->Inb[0] == 0xE3) { t->Inb += 10; t->Inbl -= 10; }
 
 	if (t->Inb[0] == 0xFD) {
-		FdProtocol(t);
-	}
+GPIOF->BSRR = 0x00002000;                  // F15 = 0
+  		FdProtocol(t);
+GPIOF->BSRR = 0x20000000;                  // F15 = 0
+  	}
 }
 
 void CommandInit() {
