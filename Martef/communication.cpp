@@ -252,8 +252,7 @@ int CommEth::StartWrite() {
 }
 
 int CommEth::ContinueWrite() {
-//   GPIOF->BSRR = 0x80000000;                  // F15 = 0 
-  GPIOF->BSRR = 0x00008000;                  // F15 = 1 
+// GPIOF->BSRR = 0x00008000;                  // F15 = 1 
     uint8_t* txbuf = EthTxAlloc(ETH_TX_BUFFER_SIZE);            
     if (txbuf == 0) return 0;
     int cnt = 0, li = 0;
@@ -278,7 +277,7 @@ int CommEth::ContinueWrite() {
             EthRealloc(cnt);
             break;
         } else {
-    		Mdma::InitLink(ethlist[li], CTCR, cnt1, addr, (uint32_t)cnt, 0, (uint32_t)&ethlist[li+1], ((addr < 0x20000000) || (addr >= 0x24000000)) ? 0 : 0x00010000);
+    		Mdma::InitLink(ethlist[li], CTCR, chunk, addr, (uint32_t)cnt, 0, (uint32_t)&ethlist[li+1], ((addr < 0x20000000) || (addr >= 0x24000000)) ? 0 : 0x00010000);
             Trans.BuCount++; Trans.ByCount = 0;
             cnt += chunk;
             li++;
@@ -289,8 +288,7 @@ int CommEth::ContinueWrite() {
         Mdma::InitHard(TxMdma, 0x000000C0, ethlist[0]);     // Highest priority
         Mdma::Start(TxMdma);
     }
-//   GPIOF->BSRR = 0x00008000;                  // F15 = 1 
-  GPIOF->BSRR = 0x80000000;                  // F15 = 0 
+//   GPIOF->BSRR = 0x80000000;                  // F15 = 0 
 	return 0;
 }
 

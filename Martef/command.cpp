@@ -199,6 +199,7 @@ void FdProtocol(TransactionStruct* t) {
 			break;
 		}
 		case MRC_READMULTI: {
+GPIOF->BSRR = 0x00002000;                  // F13 = 1 
 			if (clen < 12) BREAK(MRE_FORMAT)
 			uint16_t* ip = (uint16_t*)(com+6);
 			uint16_t count = *ip++;
@@ -231,6 +232,7 @@ void FdProtocol(TransactionStruct* t) {
 			t->Mbuf.Count = 1;
 			t->Mbuf.TerminationFlag = 0;
 		    CleanDCacheIfUsed((uint32_t*)rep, repl);
+GPIOF->BSRR = 0x20000000;                  // F13 = 0 
 			break;
 		}
 		case MRC_READSTRING: {
@@ -336,9 +338,9 @@ void CommandExecute(TransactionStruct* t)
 	if (t->Inb[0] == 0xE3) { t->Inb += 10; t->Inbl -= 10; }
 
 	if (t->Inb[0] == 0xFD) {
-GPIOF->BSRR = 0x00002000;                  // F15 = 0
+// GPIOF->BSRR = 0x00002000;                  // F13 = 1
   		FdProtocol(t);
-GPIOF->BSRR = 0x20000000;                  // F15 = 0
+// GPIOF->BSRR = 0x20000000;                  // F13 = 0
   	}
 }
 

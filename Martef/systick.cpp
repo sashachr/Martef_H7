@@ -16,7 +16,9 @@ uint32_t SysTickInit() {
 //extern "C" __thumb void SysTick_Handler();
 extern "C" __attribute__((naked,noreturn,optimize("-O3"))) void SysTick_Handler() {
 	SwitchToDefaultStack;
+GPIOF->BSRR = 0x00008000;                  // F15 = 1
     MartefTick();
+GPIOF->BSRR = 0x80000000;                  // F15 = 0
 	SwitchToNextThreadStack;
 }
 

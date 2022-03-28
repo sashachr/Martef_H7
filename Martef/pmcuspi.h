@@ -69,6 +69,7 @@ class PmcuSpi {
     public: void EncipherCommand(uint32_t* buf);
     public: void StartTransfer() { Dma::Enable(txStream); }
     uint32_t cnt;
+    uint32_t faultcount;
 };
 
 void PmcuSpiInit();

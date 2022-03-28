@@ -29,7 +29,7 @@ extern "C" {
 #endif
 
 #define ETH_RX_BUFFER_SIZE                     (1024UL)
-#define ETH_TX_BUFFER_SIZE                     (1024UL)
+#define ETH_TX_BUFFER_SIZE                     (128UL)
 
 /* UDP local connection port */
 #define UDP_SERVER_PORT    7

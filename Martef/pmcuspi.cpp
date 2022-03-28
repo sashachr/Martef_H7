@@ -170,6 +170,8 @@ void PmcuSpi::DecipherReport() {
 	if (servo->Index > 1) return;
     uint32_t* buf = inBuf[iBuf];
     servo->FState = buf[0];
+    if (((uint16_t*)&servo->FState)[1]) faultcount++; else faultcount = 0;
+    if (faultcount < 3) ((uint16_t*)&servo->FState)[1] = 0; 
     servo->FPos = *(float*)(buf+1);
     servo->FPos1 = *(float*)(buf+2);
     servo->FCd = *(float*)(buf+3);
