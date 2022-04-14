@@ -14,11 +14,11 @@ class Dma {
     public: static uint32_t GetFlagMask(uint8_t ch) { return flagmasks[ch & 3]; }
     public: static void EnableClock(uint8_t ch) { RCC->AHB1ENR |= 4 | ((ch < 8) ? 1 : 2); }
     public: static void SetMux(uint8_t ch, uint8_t inp) { *((uint32_t*)DMAMUX1 + ch) = inp; }
-    public: static void Init(DMA_Stream_TypeDef* ch, uint32_t CR, uint32_t NDTR, void* PAR, void* MAR) {
-        ch->NDTR = NDTR; ch->PAR = (uint32_t)PAR; ch->M0AR = (uint32_t)MAR; ch->CR = CR; 
+    public: static void Init(DMA_Stream_TypeDef* c, uint32_t CR, uint32_t NDTR, void* PAR, void* MAR) {
+        c->NDTR = NDTR; c->PAR = (uint32_t)PAR; c->M0AR = (uint32_t)MAR; c->CR = CR; 
     }
-    public: static void ReInit(DMA_Stream_TypeDef* ch, uint32_t NDTR, void* MAR) {
-         ch->CR = ch->CR & ~0x00000001; ch->NDTR = NDTR; ch->M0AR = (uint32_t)MAR; 
+    public: static void ReInit(DMA_Stream_TypeDef* c, uint32_t NDTR, void* MAR) {
+         c->CR &= ~0x00000001; c->NDTR = NDTR; c->M0AR = (uint32_t)MAR;
     }
     public: static void Enable(DMA_Stream_TypeDef* c) { c->CR |= 0x00000001; }
     public: static void Disable(DMA_Stream_TypeDef* c) { c->CR &= ~0x00000001; }
@@ -42,8 +42,9 @@ class Spi {
         spi->CR2 = CR2; 
         spi->CR1 = CR1; 
     }
-    public: static void Stop(SPI_TypeDef* spi) { spi->CR1 &= ~0x00000201; }
-    public: static void Start(SPI_TypeDef* spi) { uint32_t c = spi->CR1; spi->CR1 |= c | 1; spi->CR1 |= c | 0x00000201;}
+    public: static void Stop(SPI_TypeDef* spi) { spi->CR1 &= ~0x00000201; spi->CFG1 & ~0x0000c000; spi->IFCR = 0x00000FF8; }
+    public: static void Start(SPI_TypeDef* spi) { uint32_t c = spi->CR1; spi->CR1 = c | 1; spi->CR1 = c | 0x00000201; }
+    public: static void EnableDma(SPI_TypeDef* spi) { spi->CFG1 |= 0x0000c000; }
 };
 
 class ServoStruct;
@@ -57,15 +58,18 @@ class PmcuSpi {
     uint32_t rxCompleteFlag, rxFlagMask, txCompleteFlag, txFlagMask;
     uint32_t *inBuf[2], *outBuf[2];
     uint32_t iTick, iBuf;
+    public: uint8_t Valid;
     public: ServoStruct* servo;
     public: void Init(uint8_t index, uint8_t ispi, uint8_t idma);
     public: uint8_t IsReadComplete() { return (*rxFlags & rxCompleteFlag) != 0; }
     public: uint8_t IsWriteComplete() { return (*txFlags & txCompleteFlag) != 0; }
     public: void TickStart();
     public: void TickEnd();
-    public: void DecipherReport(uint32_t* buf);
+    public: void DecipherReport();
     public: void EncipherCommand(uint32_t* buf);
-    public: void EnableDma() { rxStream->CR |= 1; txStream->CR |= 1; }
+    public: void StartTransfer() { Dma::Enable(txStream); }
+    uint32_t cnt;
+    uint32_t faultcount;
 };
 
 void PmcuSpiInit();

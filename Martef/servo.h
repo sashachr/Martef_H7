@@ -127,11 +127,15 @@ class MotionBase;
 class ServoStruct {
 public:
     uint8_t Index;
-	uint32_t Gax;				// Bitwise specification of group axes
 	uint8_t Giax[NAX];			// Group axes
 	uint8_t Gnax;				// Number of group axes
    	uint8_t Groot;				// Index of the group root
     uint8_t InTransition;
+	uint32_t Gax;				// Bitwise specification of group axes
+    float* Gfifo;               // Group FIFO
+    uint32_t GfDep, GfCnt, GfFree;    // FIFO depth, number of occupied slots, number of free slots
+    uint32_t GfFirst;           // Index of the first occupied slot
+    uint32_t GfSlot;            // Width of FIFO slot
     uint32_t RState;
     uint32_t FState;
     // Control state bits:    
@@ -217,7 +221,7 @@ public:
     uint8_t SetServoMode(uint32_t mode);
     uint8_t ValidatePositionLoop();
     uint8_t GroupValidatePositionLoop();
-	void Group(int32_t gr);
+	void GroupSet(int32_t gr);
     void GroupReset(int motion);
 	void GroupReset();
     ServoStruct& GroupGetServo(int i);
@@ -237,6 +241,7 @@ public:
     uint8_t SetSignalRout(uint8_t var, uint8_t rout);
     static float* GetSignalSource(uint8_t rout);
     void SetFpos(float pos);
+    int32_t WriteFifo(float* buf, uint16_t cnt);
 
 private:
     float tpos, fpos, fpos1, fvel1;
@@ -247,5 +252,18 @@ extern ServoStruct Servo[];
 
 inline ServoStruct& ServoStruct::GroupGetServo(int i) { return Servo[Giax[i]]; }
 
-inline void ServoInit() { for (int i = 0; i < NAX; i++) Servo[i].Init(i); }
-inline void ServoTick() { for (int i = 0; i < NAX; i++) Servo[i].Tick(); }
+inline void ServoInit() { for (int i = 0; i < 2; i++) Servo[i].Init(i); }
+inline void ServoTick() { for (int i = 0; i < 2; i++) Servo[i].Tick(); }
+
+#define ServoSetVar(func) \
+    [](uint16_t ind, uint16_t count, int32_t* buf) -> int32_t {  \
+        int16_t i = 0, j = ind; \
+        for (; (i < count) && (j < NAX); i++,j++) if (!IsNan(*buf)) Servo[j].func(*(float*)buf++); \
+        return i; \
+    }
+#define ServoSetTPos  ServoSetVar(SetTPos)
+#define ServoSetPos  ServoSetVar(SetPos)
+#define ServoSetVel  ServoSetVar(SetVel)
+#define ServoSetCur  ServoSetVar(SetCur)
+#define ServoSetCurQ  ServoSetVar(SetCurQ)
+#define ServoSetTeta  ServoSetVar(SetTeta)

@@ -106,7 +106,7 @@ void ServoStruct::SetFault(uint32_t fault, uint32_t error) {
         RState &= ~1;
     }
 }
-void ServoStruct::Group(int32_t gr) {
+void ServoStruct::GroupSet(int32_t gr) {
 	GroupReset();
 	if (gr == 0) return;
 	Gax = gr;
@@ -213,12 +213,21 @@ void ServoStruct::Tick() {
     if (TPosSource) {
         if (IsEnabled()) SetTPos(*TPosSource); else { TPosRout = 0; TPosSource = 0; }
     }
+    if (--InitialCounter == 0) ResetError();
     if ((RState & 1) != enable) {
         enable = RState & 1;
         if (enable) ResetError();     
     }
     ((uint16_t*)&PreFault)[1] = ((uint16_t*)&FState)[1];
-    Fault |= PreFault & ~FaultMask;
+    if (Index == 0) {
+        if (PreFault) {
+            Fault |= PreFault & ~FaultMask;
+        }
+    } else {
+        if (PreFault) {
+            Fault |= PreFault & ~FaultMask;
+        }
+    }
     uint32_t severity = (Fault & FaultDisable) ? 3 : (Fault & FaultKill) ? 1 : 0;
     if (severity > Severity) {
         SetError(GetError(Fault, severity), severity);
@@ -239,6 +248,12 @@ void ServoStruct::Tick() {
         if (IsEnabled()) SetCur(*CInSource); else { CInRout = 0; CInSource = 0; }
     }
 }
+
+// uint8_t ServoStruct::SetServoMode(uint32_t mode) {
+//     if (mode & SM_ENABLE) {
+//         if ((mode & (SM_POSITIONLOOP|SM_VELOCITYLOOP)) && !(RState & SM_COMMUTATION)) return MRE_NOCOMMUT;
+//     }
+// }
 
 uint8_t ServoStruct::SetTPos(float pos) {
     // uint8_t r;
@@ -272,3 +287,19 @@ void ServoStruct::SetFpos(float pos) {
     RState |= SM_SETFPOS;
 }
 
+int32_t ServoStruct::WriteFifo(float* buf, uint16_t cnt) {
+    uint16_t slots = cnt / GfSlot;
+    if (slots * GfSlot != cnt) return 0;
+    if (slots > GfFree) { slots = GfFree; cnt = slots * GfSlot; }
+    uint16_t write = GfFirst + GfCnt;
+    if (write >= GfDep) write -= GfDep;
+    uint16_t tslots = slots;
+    if (write + slots > GfDep) {
+        uint16_t n = GfDep - write;
+        MemCpy32(Gfifo + write, buf, n * GfSlot);
+        write = 0; slots -= n; buf += n;
+    }
+    MemCpy32(Gfifo + write, buf, slots * GfSlot);
+    GfCnt += tslots; GfFree -= tslots;
+    return cnt;
+}
