@@ -12,6 +12,8 @@
 #include "motion.h"
 #include "servo.h"
 
+float fifoarea[FIFO_DEPTH * NAX];
+
 ServoStruct Servo[NAX];
 
 uint32_t errors[33] = {
@@ -79,6 +81,7 @@ void ServoStruct::Init(uint8_t index) {
     FaultMask = 0xF808FFFF;
     FaultDisable = 0x87FF0000; 
     RelatedAxes = (1 << NAX) - 1;
+    GroupSet(1 << Index);
 }
 
 uint32_t ServoStruct::GetError(uint32_t fault, uint8_t severity) {
@@ -119,6 +122,8 @@ void ServoStruct::GroupSet(int32_t gr) {
 		    Servo[i].Motion->SetType(M_DEPENDENT);
         }
 	}
+	Gbax = Gnax;
+    FifoAllocate();
 }
 void ServoStruct::GroupReset(int motion) { 
     Gnax = 1; Gax = 1 << Index; Giax[0] = Groot = Index; 
@@ -131,6 +136,9 @@ void ServoStruct::GroupReset() {
 		for (int i = 0; i < Gnax; i++) if (Giax[i] != Index) Servo[Giax[i]].GroupReset(M_DEFAULT);
 		GroupReset(M_DEFAULT);
 	}
+}
+void ServoStruct::GroupSetTPos(float* from) {
+    for (int i = 0; i < Gnax; i++) Servo[Giax[i]].TPos = *from++;
 }
 void ServoStruct::GroupGetTPos(float* to) {
     for (int i = 0; i < Gnax; i++) {
@@ -216,7 +224,11 @@ void ServoStruct::Tick() {
     if (--InitialCounter == 0) ResetError();
     if ((RState & 1) != enable) {
         enable = RState & 1;
-        if (enable) ResetError();     
+        if (enable) {
+            ResetError();     
+        } else {
+            Motion->Disable();
+        }
     }
     ((uint16_t*)&PreFault)[1] = ((uint16_t*)&FState)[1];
     if (Index == 0) {
@@ -287,7 +299,7 @@ void ServoStruct::SetFpos(float pos) {
     RState |= SM_SETFPOS;
 }
 
-int32_t ServoStruct::WriteFifo(float* buf, uint16_t cnt) {
+int32_t ServoStruct::FifoWrite(float* buf, uint16_t cnt) {
     uint16_t slots = cnt / GfSlot;
     if (slots * GfSlot != cnt) return 0;
     if (slots > GfFree) { slots = GfFree; cnt = slots * GfSlot; }
@@ -296,10 +308,31 @@ int32_t ServoStruct::WriteFifo(float* buf, uint16_t cnt) {
     uint16_t tslots = slots;
     if (write + slots > GfDep) {
         uint16_t n = GfDep - write;
-        MemCpy32(Gfifo + write, buf, n * GfSlot);
+        MemCpy32(Gfifo + write * GfSlot, buf, n * GfSlot);
         write = 0; slots -= n; buf += n;
     }
-    MemCpy32(Gfifo + write, buf, slots * GfSlot);
+    MemCpy32(Gfifo + write * GfSlot, buf, slots * GfSlot);
     GfCnt += tslots; GfFree -= tslots;
     return cnt;
+}
+int8_t ServoStruct::FifoRead(float* buf) {
+    if (GfCnt == 0) return 0;
+    float* f = Gfifo + GfFirst * GfSlot;
+    for (int i = 0; i < GfSlot; i++) *buf++ = *f++;
+    if (++GfFirst == GfDep) GfFirst = 0;
+    GfCnt--; GfFree++; 
+    return 1;
+}
+void FifoAllocate() {
+    int alloc = 0;
+    for (int i = 0; i < NAX; i++) {
+        ServoStruct& s = Servo[i];
+        if (s.Groot == i) {
+            s.Gfifo = fifoarea + alloc;
+            s.GfDep = s.GfFree = FIFO_DEPTH;
+            s.GfCnt = s.GfFirst = 0;
+            s.GfSlot = s.Gnax;
+            alloc += FIFO_DEPTH * s.Gnax;
+        }
+    }
 }

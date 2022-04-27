@@ -53,6 +53,7 @@
 "int attr(PROPWRITE) MTYPE[NAX] @151;\n"
 "int CTYPE[NAX] @152;\n"
 "float attr(PROPWRITE) GFIFO[NAX] @153;\n"
+"int attr(READONLY) GFREE[NAX] @154;\n"
 "float attr(FLASH) VELF[NAX] @179;\n"
 "float attr(FLASH,POS) ENDIL[NAX] @180;\n"
 "float attr(FLASH,POS) PEL[NAX] @181;\n"

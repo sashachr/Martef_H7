@@ -180,7 +180,7 @@ void FdProtocol(TransactionStruct* t) {
 				Vardef* vd = SysVars + var;
                 int n = vd->size;
 				if (n == 0) BREAK(MRE_ILLEGALVARIABLE)
-                if (ind + count > n) BREAK(MRE_ILLEGALINDEX)
+                // if (ind + count > n) BREAK(MRE_ILLEGALINDEX)
 				if (vd->write == 0) BREAK(MRE_READONLYVARIABLE)
 				vd->write(ind, count, (int32_t*)(com+12));
 			} else if (var < 20000) {   // User array

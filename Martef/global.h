@@ -159,6 +159,7 @@ inline void MemCpy32(void* dest, void* source, uint32_t count) {
   	for (uint32_t i = 0; i < count; i++) *d++ = *s++; 
 } 
 inline int Min(int a, int b) { return (a <= b) ? a : b; }
+inline float Minf(float a, float b) { return (a <= b) ? a : b; }
 
 inline uint16_t IsNan(float V)
 {

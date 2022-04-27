@@ -11,10 +11,11 @@
 #define M_TABLE			3
 #define M_MINIMUMENERGY	4
 #define M_THIRDORDER	5
+#define M_COMMUTATION	20
 #define M_LINE2			100
 #define M_ARC2			101
-#define M_TBLENDED		103
-#define M_DEFAULT		M_TRAPEZOIDAL
+#define M_BLENDED		103
+#define M_DEFAULT		M_BLENDED
 
 // Joining
 #define J_COMPLETE		1
@@ -31,8 +32,10 @@ public:
 	int32_t Type;
 	int32_t Join;
 	float TPos[NAX];					// Target position
-	float MVel, MAcc, MJerk; 	// Motion parameters
-	float MTv, MTa, MTj;		// Parameters for time-based motion
+	float MVel, MAcc, MJerk; 			// Motion parameters
+	float MTv, MTa, MTj;				// Parameters for time-based motion
+	float T1, T2, T3;					// Times for commutation
+	float Com;							// Current for commutation
 	float GPos, GVel, GAcc, GJerk;
 	float time;
 	uint16_t phase;
@@ -44,11 +47,28 @@ public:
 		for (int i  = 0; i < n; i++) { float d = *p1++ - *p0++; s += d * d;}
 		return sqrtf(s);
 	}
+	float EuclidAndCos(float* p0, float* p1, float* cos, int n) {
+		float s = 0;
+		float* c = cos;
+		for (int i = 0; i < n; i++) { float d = *p1++ - *p0++; s += d * d; *c++ = d; }
+		s = sqrtf(s);
+		float _s = 1.0f / s;
+		for (int i = 0; i < n; i++) *cos++ *= _s;
+		return s; 
+	}
 	void SetType(int32_t type);
 	virtual void Tick() {}
-	virtual void Kill();
-	virtual void Stop(); 
+	virtual void Kill() {}
+	virtual void Disable();
+	virtual void Stop() {}
 	virtual void Next() {}
+};
+
+class Commutation : public MotionBase {
+public:
+	float t0;
+	Commutation() { phase = 20; }
+	virtual void Tick();
 };
 
 struct TrapezoidalMotionSegment {
@@ -163,6 +183,20 @@ public:
 //	virtual void Kill();
 };
 
+class Multipoint : public MotionBase {
+public:
+	float p, v, a, j;
+	float tv, ta, tj;
+	float time;
+	float p0[NAX], p1[NAX], p2[NAX];
+	float v0[NAX], a0[NAX], j0[NAX], t0;
+	float c[NAX];
+	Multipoint() {}
+	virtual void Tick();
+	virtual void Kill();
+	uint8_t Changed(float* a, float* b, int n) { for (int i = 0; i < n; i++) if (*a++ != *b++) return 1; return 0; }
+};
+
 void StartOneAxisMotion(MotionBase* M, float p1, float v1);
 
 void StartLine2Motion(float t0, float t1);
@@ -184,6 +218,8 @@ public:
 		char m5[sizeof(Line2Motion)];
 		char m6[sizeof(Arc2Motion)];
 		char m7[sizeof(TimeBased)];
+		char m8[sizeof(Multipoint)];
+		char m9[sizeof(Commutation)];
 	} MotionContainers[NAX];
 	MotionBase& operator [] (int i) { return *(MotionBase*)&MotionContainers[i]; }
 };

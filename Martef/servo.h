@@ -121,6 +121,7 @@ public:
 #define RO_VIN              4
 #define RO_CIN              5
 
+#define FIFO_DEPTH      50
 
 class MotionBase;
 
@@ -129,6 +130,7 @@ public:
     uint8_t Index;
 	uint8_t Giax[NAX];			// Group axes
 	uint8_t Gnax;				// Number of group axes
+    uint8_t Gbax;               // Number of group axes contributing to length
    	uint8_t Groot;				// Index of the group root
     uint8_t InTransition;
 	uint32_t Gax;				// Bitwise specification of group axes
@@ -225,6 +227,7 @@ public:
     void GroupReset(int motion);
 	void GroupReset();
     ServoStruct& GroupGetServo(int i);
+    void GroupSetTPos(float* from);
     void GroupGetTPos(float* to);
     void GroupGetRPos(float* to);
     void GroupSetRefs(float* p0, float* c);
@@ -241,7 +244,14 @@ public:
     uint8_t SetSignalRout(uint8_t var, uint8_t rout);
     static float* GetSignalSource(uint8_t rout);
     void SetFpos(float pos);
-    int32_t WriteFifo(float* buf, uint16_t cnt);
+    int32_t FifoWrite(float* buf, uint16_t cnt);
+    int8_t FifoRead(float* buf);
+    void FifoFlush() { GfCnt = GfFirst = 0; GfFree = GfDep;}
+    // float GroupLength() {
+    //     float len = 0;
+    //     for (int i = 0; i < Gbax; i++) { ServoStruct& s = Servo[Giax[i]]; float p = s.TPos - s.tpos; len += p * p; }
+    //     return sqrtf(len);
+    // }
 
 private:
     float tpos, fpos, fpos1, fvel1;
@@ -254,6 +264,8 @@ inline ServoStruct& ServoStruct::GroupGetServo(int i) { return Servo[Giax[i]]; }
 
 inline void ServoInit() { for (int i = 0; i < 2; i++) Servo[i].Init(i); }
 inline void ServoTick() { for (int i = 0; i < 2; i++) Servo[i].Tick(); }
+
+void FifoAllocate();
 
 #define ServoSetVar(func) \
     [](uint16_t ind, uint16_t count, int32_t* buf) -> int32_t {  \

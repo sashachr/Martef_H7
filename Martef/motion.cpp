@@ -77,25 +77,61 @@ void MotionBase::Init(int i) {
 	time = 0; phase = 0; 
 	MVel = 10; MAcc = 100; MJerk = 10000;
 	MTv = 500; MTa = 50; MTj = 10;
+	T1 = 0.05F; T2 = 0.5F; Com = 10;
 	SetType(M_DEFAULT);
 }
 void MotionBase::SetType(int32_t type) {
 	Type = type;
 	switch (type) {
+		case M_COMMUTATION: new(this) Commutation(); break;
 		case M_TRAPEZOIDAL: new(this) GroupTrapezoidalMotion(); break;
 		case M_THIRDORDER: new(this) ThirdOrderMotion(); break;
-		case M_TBLENDED: new(this) TimeBased(); break;
+		case M_BLENDED: new(this) Multipoint(); break;
 		default: new(this) MotionBase();
 	} 
 }
-// Kill motion
-void MotionBase::Kill() {
-	new(this) TrapezoidalMotion((uint16_t)M_TRAPEZOIDAL);
-	this->Kill();
+void MotionBase::Disable() {
+	Servo->FifoFlush();
+	phase = 0;
 }
 
-void MotionBase::Stop() {
-	new(this) MotionBase();
+void Commutation::Tick() {
+	if (phase == 20) {
+		t0 = 0;
+		Servo->CdOut = Servo->CqOut = 0;
+		Servo->Teta = M_PI_4;
+		Servo->RState = (Servo->RState & ~(SM_POSITIONLOOP|SM_VELOCITYLOOP|SM_CURRENTLOOP|SM_COMMUTATION)) | (SM_MOTION|SM_PWM|SM_ENABLE);
+		phase = 21;
+	} else if ((phase == 21) || (phase == 25)) {
+		t0 += SECONDS_IN_TICK;
+		if (t0 < T1) {
+			Servo->CqOut = Minf(Com, 100) * t0 / T1;
+		} else {
+			Servo->CqOut = Minf(Com, 100);
+			t0 -= T1;
+			phase++;
+		}
+	} else if ((phase == 22) || (phase == 26)) {
+		t0 += SECONDS_IN_TICK;
+		if (t0 < T2) {
+		} else {
+			t0 -= T2;
+			if (phase == 24) Servo->RState |= ~SM_ENABLE;
+			phase++;
+		}
+	} else if ((phase == 23) || (phase == 27)) {
+		Servo->CdOut = Servo->CqOut = 0;
+		t0 = 0;
+		phase++;
+	} else if (phase == 24) {
+		Servo->Teta = 0;
+		t0 = 0;
+		phase++;
+	} else if (phase == 28) {
+		Servo->RState &= ~SM_ENABLE;
+		Servo->RState |= SM_COMMUTATION;
+		phase = 0;
+	}
 }
 
 void TrapezoidalMotion::Calculate(float p0, float v0, float p1, float v1, float vel, float acc) {
@@ -627,9 +663,228 @@ void TimeBased::Tick() {
 	}
 }
 
-// MotionBase* DefaultMotion(int i) {
-// 	return new(&Motions[i]) TrapezoidalMotion();
-// }
+void Multipoint::Tick() {
+	if (phase == 0) {
+		while (Servo->FifoRead(p1)) {
+			Servo->GroupGetRPos(p0);
+			if (Changed(p0, p1, Servo->Gnax) && Servo->GroupValidatePositionLoop()) {
+				Servo->GroupSetTPos(p1);
+				p = EuclidAndCos(p0, p1, c, Servo->Gbax);
+				v = Servo->Vel; a = Servo->Acc; j = Servo->Jerk;
+				tj = a / j; 
+				if (tj < SECONDS_IN_TICK*0.5F) { tj < SECONDS_IN_TICK*0.5F; j = a / tj; }
+				ta = v / a;
+				if (ta < tj) { ta = tj; a = v / ta; j = a / tj; }
+				tv = p / v;
+				if (tv < ta + tj) { tv = ta + tj; v = p / tv; a = v / ta; j = a / tj; }
+				for (int i = 0; i < Servo->Gnax; i++) {
+					j0[i] = j * c[i]; a0[i] = 0; v0[i] = 0;
+				}
+				time = t0 = 0;
+				phase = 1;
+				break;
+			}
+		}
+	}
+	if (phase != 0) {
+		time += SECONDS_IN_TICK;
+		float ti = time - t0, t = 0;
+		while (t != ti) {
+			if (phase == 1) {
+				if (ti < tj) {
+					t = ti; 
+					for (int i = 0; i < Servo->Gnax; i++) {
+						ServoStruct& s = Servo->GroupGetServo(i);
+						s.RJerk = j0[i];
+						s.RAcc = a0[i] + j0[i] * t;
+						s.RVel = v0[i] + (a0[i] + j0[i] * t * 0.5F) * t;
+						s.RPos = p0[i] + (v0[i] + (a0[i] * 0.5F + j0[i] * t * 0.166666666667F) * t) * t;
+					}
+				} else { 
+					phase = 2; 
+					t = tj; t0 += t; ti -= t;
+					for (int i = 0; i < Servo->Gnax; i++) {
+						p0[i] = p0[i] + (v0[i] + (a0[i] * 0.5F + j0[i] * t * 0.166666666667F) * t) * t;
+						v0[i] = v0[i] + (a0[i] + j0[i] * t * 0.5F) * t;
+						a0[i] = a0[i] + j0[i] * t;
+					}
+				}
+			} else if (phase == 2) {
+				if (ti < ta - tj) {
+					t = ti; 
+					for (int i = 0; i < Servo->Gnax; i++) {
+						ServoStruct& s = Servo->GroupGetServo(i);
+						s.RJerk = 0;
+						s.RAcc = a0[i];
+						s.RVel = v0[i] + a0[i] * t;
+						s.RPos = p0[i] + (v0[i] + a0[i] * 0.5F * t) * t;
+					}
+				} else { 
+					phase = 3; 
+					t = ta - tj; 
+					if (t > 0) {
+						t0 += t; ti -= t; 
+						for (int i = 0; i < Servo->Gnax; i++) {
+							p0[i] = p0[i] + (v0[i] + a0[i] * 0.5F * t) * t;
+							v0[i] = v0[i] + a0[i] * t;
+						}
+					}
+				}
+			} else if (phase == 3) {
+				if (ti < tj) {
+					t = ti; 
+					for (int i = 0; i < Servo->Gnax; i++) {
+						ServoStruct& s = Servo->GroupGetServo(i);
+						s.RJerk = -j0[i];
+						s.RAcc = a0[i] - j0[i] * t;
+						s.RVel = v0[i] + (a0[i] - j0[i] * t * 0.5F) * t;
+						s.RPos = p0[i] + (v0[i] + (a0[i] * 0.5F - j0[i] * t * 0.166666666667F) * t) * t;
+					}
+				} else { 
+					phase = 4; 
+					t = tj; t0 += t; ti -= t;
+					for (int i = 0; i < Servo->Gnax; i++) {
+						p0[i] = p0[i] + (v0[i] + (a0[i] * 0.5F - j0[i] * t * 0.166666666667F) * t) * t;
+						v0[i] = v0[i] + (a0[i] - j0[i] * t * 0.5F) * t;
+						a0[i] = a0[i] - j0[i] * t;
+					}
+				}
+			} else if (phase == 4) {
+				if (ti < tv - ta - tj) {
+					t = ti; 
+					for (int i = 0; i < Servo->Gnax; i++) {
+						ServoStruct& s = Servo->GroupGetServo(i);
+						s.RJerk = 0;
+						s.RAcc = 0;
+						s.RVel = v0[i];
+						s.RPos = p0[i] + v0[i] * t;
+					}
+				} else { 
+					phase = 5;
+					t = tv - ta - tj; 
+					if (t > 0) {
+						t0 += t; ti -= t;
+						for (int i = 0; i < Servo->Gnax; i++) {
+							p0[i] = p0[i] + v0[i] * t;
+						}
+					}
+					while (Servo->FifoRead(p2)) {
+						if (Changed(p1, p2, Servo->Gnax)) {
+							Servo->GroupSetTPos(p2);
+							p = EuclidAndCos(p1, p2, c, Servo->Gbax);	// blending
+							v = Servo->Vel; 
+							tv = p / v;
+							if (tv < ta + tj) { tv = ta + tj; v = p / tv; }
+							a = v / ta; j = a / tj; 
+							for (int i = 0; i < Servo->Gnax; i++) {
+								float v1 = v * c[i];
+								float a1 = (v1 - v0[i]) / ta;
+								j0[i] = a1 / tj;
+								p1[i] = p2[i];
+							}
+							phase = 1;
+							break;
+						}
+					}
+					if (phase == 5) {
+						for (int i = 0; i < Servo->Gnax; i++) {
+							j0[i] = j * c[i]; a0[i] = 0;
+						}
+					}
+				}
+			} else if (phase == 5) {
+				if (ti < tj) {
+					t = ti; 
+					for (int i = 0; i < Servo->Gnax; i++) {
+						ServoStruct& s = Servo->GroupGetServo(i);
+						s.RJerk = -j0[i];
+						s.RAcc = a0[i] - j0[i] * t;
+						s.RVel = v0[i] + (a0[i] - j0[i] * t * 0.5F) * t;
+						s.RPos = p0[i] + (v0[i] + (a0[i] * 0.5F - j0[i] * t * 0.166666666667F) * t) * t;
+					}
+				} else { 
+					phase = 6; 
+					t = tj; t0 += t; ti -= t;
+					for (int i = 0; i < Servo->Gnax; i++) {
+						p0[i] = p0[i] + (v0[i] + (a0[i] * 0.5F - j0[i] * t * 0.166666666667F) * t) * t;
+						v0[i] = v0[i] + (a0[i] - j0[i] * t * 0.5F) * t;
+						a0[i] = a0[i] - j0[i] * t;
+					}
+				}
+			} else if (phase == 6) {
+				if (ti < ta - tj) {
+					t = ti; 
+					for (int i = 0; i < Servo->Gnax; i++) {
+						ServoStruct& s = Servo->GroupGetServo(i);
+						s.RJerk = 0;
+						s.RAcc = a0[i];
+						s.RVel = v0[i] + a0[i] * t;
+						s.RPos = p0[i] + (v0[i] + a0[i] * 0.5F * t) * t;
+					}
+				} else { 
+					phase = 7; 
+					t = ta - tj; 
+					if (t > 0) {
+						t0 += t; ti -= t; 
+						for (int i = 0; i < Servo->Gnax; i++) {
+							p0[i] = p0[i] + (v0[i] + a0[i] * 0.5F * t) * t;
+							v0[i] = v0[i] + a0[i] * t;
+						}
+					}
+				}
+			} else if (phase == 7) {
+				if (ti < tj) {
+					t = ti; 
+					for (int i = 0; i < Servo->Gnax; i++) {
+						ServoStruct& s = Servo->GroupGetServo(i);
+						s.RJerk = j0[i];
+						s.RAcc = a0[i] + j0[i] * t;
+						s.RVel = v0[i] + (a0[i] + j0[i] * t * 0.5F) * t;
+						s.RPos = p0[i] + (v0[i] + (a0[i] * 0.5F + j0[i] * t * 0.166666666667F) * t) * t;
+					}
+				} else { 
+					phase = 0; 
+					t = ti;
+					for (int i = 0; i < Servo->Gnax; i++) {
+						ServoStruct& s = Servo->GroupGetServo(i);
+						s.RJerk = 0;
+						s.RAcc = 0;
+						s.RVel = 0;
+						s.RPos = p1[i];
+					}
+				}
+			} else if (phase == 100) {		// Kill
+				for (int i = 0; i < Servo->Gnax; i++) {
+					ServoStruct& s = Servo->GroupGetServo(i);
+					if (s.RVel = 0) {
+						s.Jerk = s.Acc = 0;
+					} else {
+						t = SECONDS_IN_TICK;
+						float dv = s.Acc * t;
+						if (fabsf(s.RVel) > dv) {
+							if (s.RVel > 0) dv = -dv;
+							s.RPos += (s.RVel + 0.5F * dv) * t; 
+							s.RVel += dv;
+							s.RAcc = (dv > 0) ? s.Acc : -s.Acc;
+							s.RJerk = 0;
+						} else {
+							s.FifoFlush();
+							phase = 0;
+							t = fabsf(s.RVel) / s.Acc;
+							dv = - s.RVel;
+							s.RPos -= 0.5F * dv * t;
+							s.RVel = s.RAcc = s.RJerk = 0;
+						}
+					}
+				}
+			}
+		}
+	}
+}
+void Multipoint::Kill() {
+	Servo->FifoFlush(); 
+	phase = 100; 
+}
 
 void MotionInit() {
 	FillCubicRootTable();

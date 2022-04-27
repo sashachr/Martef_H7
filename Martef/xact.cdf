@@ -53,6 +53,7 @@ int attr(PROPWRITE) GAXES[NAX] @150;
 int attr(PROPWRITE) MTYPE[NAX] @151;
 int CTYPE[NAX] @152;
 float attr(PROPWRITE) GFIFO[NAX] @153;
+int attr(READONLY) GFREE[NAX] @154;
 float attr(FLASH) VELF[NAX] @179;
 float attr(FLASH,POS) ENDIL[NAX] @180;
 float attr(FLASH,POS) PEL[NAX] @181;
