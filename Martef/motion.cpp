@@ -760,7 +760,7 @@ void Multipoint::Tick() {
 						s.RPos = p0[i] + v0[i] * t;
 					}
 				} else { 
-					phase = 5;
+					// phase = 5;
 					t = tv - ta - tj; 
 					if (t > 0) {
 						t0 += t; ti -= t;
@@ -768,8 +768,8 @@ void Multipoint::Tick() {
 							p0[i] = p0[i] + v0[i] * t;
 						}
 					}
-					while (Servo->FifoRead(p2)) {
-						if (Changed(p1, p2, Servo->Gnax)) {
+					if ((Join == 3) && (Servo->FifoRead(p2))) {
+						// if (Changed(p1, p2, Servo->Gnax)) {
 							Servo->GroupSetTPos(p2);
 							p = EuclidAndCos(p1, p2, c, Servo->Gbax);	// blending
 							v = Servo->Vel; 
@@ -783,13 +783,13 @@ void Multipoint::Tick() {
 								p1[i] = p2[i];
 							}
 							phase = 1;
-							break;
-						}
-					}
-					if (phase == 5) {
+							// break;
+						// }
+					} else {
 						for (int i = 0; i < Servo->Gnax; i++) {
 							j0[i] = j * c[i]; a0[i] = 0;
 						}
+						phase = 5;
 					}
 				}
 			} else if (phase == 5) {

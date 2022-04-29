@@ -52,8 +52,10 @@ public:
 		float* c = cos;
 		for (int i = 0; i < n; i++) { float d = *p1++ - *p0++; s += d * d; *c++ = d; }
 		s = sqrtf(s);
-		float _s = 1.0f / s;
-		for (int i = 0; i < n; i++) *cos++ *= _s;
+		if (s > 0) {
+			float _s = 1.0f / s;
+			for (int i = 0; i < n; i++) *cos++ *= _s;
+		}
 		return s; 
 	}
 	void SetType(int32_t type);
