@@ -14,8 +14,9 @@
 #define M_COMMUTATION	20
 #define M_LINE2			100
 #define M_ARC2			101
-#define M_BLENDED		103
-#define M_DEFAULT		M_BLENDED
+#define M_MULTIPOINT	103
+#define M_RECIPROCATED	105
+#define M_DEFAULT		M_MULTIPOINT
 
 // Joining
 #define J_COMPLETE		1
@@ -51,12 +52,14 @@ public:
 		float s = 0;
 		float* c = cos;
 		for (int i = 0; i < n; i++) { float d = *p1++ - *p0++; s += d * d; *c++ = d; }
-		s = sqrtf(s);
 		if (s > 0) {
+			s = sqrtf(s);
 			float _s = 1.0f / s;
 			for (int i = 0; i < n; i++) *cos++ *= _s;
+			return s;
+		} else {
+			return 0;
 		}
-		return s; 
 	}
 	void SetType(int32_t type);
 	virtual void Tick() {}
@@ -194,6 +197,20 @@ public:
 	float v0[NAX], a0[NAX], j0[NAX], t0;
 	float c[NAX];
 	Multipoint() {}
+	virtual void Tick();
+	virtual void Kill();
+	uint8_t Changed(float* a, float* b, int n) { for (int i = 0; i < n; i++) if (*a++ != *b++) return 1; return 0; }
+};
+
+class Reciprocated : public MotionBase {
+public:
+	float p, v, a, j;
+	float tv, ta, tj;
+	float time;
+	float p0[NAX], p1[NAX], p2[NAX];
+	float v0[NAX], a0[NAX], j0[NAX], t0;
+	float c[NAX];
+	Reciprocated() {}
 	virtual void Tick();
 	virtual void Kill();
 	uint8_t Changed(float* a, float* b, int n) { for (int i = 0; i < n; i++) if (*a++ != *b++) return 1; return 0; }
