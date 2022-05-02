@@ -52,6 +52,7 @@
 "float attr(VEL) CMTCUR[NAX] @146;\n"
 "float attr(VEL) CMTT1[NAX] @147;\n"
 "float attr(VEL) CMTT2[NAX] @148;\n"
+"float attr(VEL) DWELL[NAX] @149;\n"
 "int attr(PROPWRITE) GAXES[NAX] @150;\n"
 "int attr(PROPWRITE) MTYPE[NAX] @151;\n"
 "int CTYPE[NAX] @152;\n"

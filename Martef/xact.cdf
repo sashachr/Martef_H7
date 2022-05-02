@@ -52,6 +52,7 @@ float attr(VEL) GTJ[NAX] @145;
 float attr(VEL) CMTCUR[NAX] @146;
 float attr(VEL) CMTT1[NAX] @147;
 float attr(VEL) CMTT2[NAX] @148;
+float attr(VEL) DWELL[NAX] @149;
 int attr(PROPWRITE) GAXES[NAX] @150;
 int attr(PROPWRITE) MTYPE[NAX] @151;
 int CTYPE[NAX] @152;

@@ -77,7 +77,7 @@ void MotionBase::Init(int i) {
 	time = 0; phase = 0; 
 	MVel = 10; MAcc = 100; MJerk = 10000;
 	MTv = 500; MTa = 50; MTj = 10;
-	T1 = 0.05F; T2 = 0.5F; Com = 10;
+	T1 = 0.05F; T2 = 0.5F; Com = 20;
 	SetType(M_DEFAULT);
 }
 void MotionBase::SetType(int32_t type) {
@@ -664,6 +664,8 @@ void TimeBased::Tick() {
 	}
 }
 
+Multipoint::Multipoint() { Servo->FifoFlush(); phase = 0;}
+
 void Multipoint::Tick() {
 	if (phase == 0) {
 		while (Servo->FifoRead(p1)) {
@@ -887,6 +889,8 @@ void Multipoint::Kill() {
 	phase = 100; 
 }
 
+Reciprocated::Reciprocated() { Servo->FifoFlush(); phase = 0; }
+
 void Reciprocated::Tick() {
 	if (phase == 0) {
 		if (Servo->FifoRead(p1) && Servo->FifoRead(p2) && Servo->GroupValidatePositionLoop()) {
@@ -1046,7 +1050,8 @@ void Reciprocated::Tick() {
 						s.RPos = p0[i] + (v0[i] + (a0[i] * 0.5F + j0[i] * t * 0.166666666667F) * t) * t;
 					}
 				} else { 
-					t = ti;
+					phase = 8;
+					t = tj; t0 += t; ti -= t;
 					for (int i = 0; i < Servo->Gnax; i++) {
 						ServoStruct& s = Servo->GroupGetServo(i);
 						s.RJerk = 0;
@@ -1054,6 +1059,12 @@ void Reciprocated::Tick() {
 						s.RVel = 0;
 						s.RPos = p1[i];
 					}
+				}
+			} else if (phase == 8) {		// Dwell
+				if (ti < Dwell) {
+					t = ti; 
+				} else { 
+					t = ti;
 					for (int i = 0; i < Servo->Gnax; i++) { p0[i] = p1[i]; p1[i] = p2[i]; p2[i] = p0[i]; }
 					Servo->GroupSetTPos(p1);
 					p = EuclidAndCos(p0, p1, c, Servo->Gbax);

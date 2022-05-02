@@ -35,6 +35,7 @@ public:
 	float TPos[NAX];					// Target position
 	float MVel, MAcc, MJerk; 			// Motion parameters
 	float MTv, MTa, MTj;				// Parameters for time-based motion
+	float Dwell;						// Dwell
 	float T1, T2, T3;					// Times for commutation
 	float Com;							// Current for commutation
 	float GPos, GVel, GAcc, GJerk;
@@ -196,7 +197,7 @@ public:
 	float p0[NAX], p1[NAX], p2[NAX];
 	float v0[NAX], a0[NAX], j0[NAX], t0;
 	float c[NAX];
-	Multipoint() {}
+	Multipoint();
 	virtual void Tick();
 	virtual void Kill();
 	uint8_t Changed(float* a, float* b, int n) { for (int i = 0; i < n; i++) if (*a++ != *b++) return 1; return 0; }
@@ -210,7 +211,7 @@ public:
 	float p0[NAX], p1[NAX], p2[NAX];
 	float v0[NAX], a0[NAX], j0[NAX], t0;
 	float c[NAX];
-	Reciprocated() {}
+	Reciprocated();
 	virtual void Tick();
 	virtual void Kill();
 	uint8_t Changed(float* a, float* b, int n) { for (int i = 0; i < n; i++) if (*a++ != *b++) return 1; return 0; }

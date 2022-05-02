@@ -147,7 +147,7 @@
 /* 146 CMTCUR         */ {NAX, TYPE_FLOAT|VF_DIRECTREAD|VF_DIRECTWRITE|CAT_VEL, MotionDirectReadWrite(Com)},
 /* 147 CMTT1          */ {NAX, TYPE_FLOAT|VF_DIRECTREAD|VF_DIRECTWRITE|CAT_VEL, MotionDirectReadWrite(T1)},
 /* 148 CMTT2          */ {NAX, TYPE_FLOAT|VF_DIRECTREAD|VF_DIRECTWRITE|CAT_VEL, MotionDirectReadWrite(T2)},
-/* 149                */ {0},
+/* 149 DWELL          */ {NAX, TYPE_FLOAT|VF_DIRECTREAD|VF_DIRECTWRITE|CAT_VEL, MotionDirectReadWrite(Dwell)},
 /* 150 GAXES          */ {NAX, TYPE_INT32|VF_DIRECTREAD|VF_PROPWRITE, ServoDirectRead(Gax), ServoPropWrite(GroupSet, int32_t)},
 /* 151 MTYPE          */ {NAX, TYPE_INT32|VF_DIRECTREAD|VF_PROPWRITE, MotionDirectRead(Type), MotionPropWrite(SetType, int32_t)},
 /* 152 CTYPE          */ {NAX, TYPE_INT32|VF_DIRECTREAD|VF_DIRECTWRITE, MotionDirectReadWrite(Join)},
