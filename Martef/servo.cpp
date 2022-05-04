@@ -12,7 +12,7 @@
 #include "motion.h"
 #include "servo.h"
 
-float fifoarea[FIFO_DEPTH * NAX];
+float fifoarea[2 * FIFO_DEPTH * NAX];
 
 ServoStruct Servo[NAX];
 
@@ -332,7 +332,7 @@ void FifoAllocate() {
             s.GfDep = s.GfFree = FIFO_DEPTH;
             s.GfCnt = s.GfFirst = 0;
             s.GfSlot = s.Gnax;
-            alloc += FIFO_DEPTH * s.Gnax;
+            alloc += FIFO_DEPTH * (s.Gnax + 1);
         }
     }
 }

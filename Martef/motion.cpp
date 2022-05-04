@@ -76,7 +76,7 @@ void MotionBase::Init(int i) {
 	Index = i;
 	time = 0; phase = 0; 
 	MVel = 10; MAcc = 100; MJerk = 10000;
-	MTv = 500; MTa = 50; MTj = 10;
+	MTv = 0.5F; MTa = 0.1F; MTj = 0.01F;
 	T1 = 0.05F; T2 = 0.5F; Com = 20;
 	SetType(M_DEFAULT);
 }
@@ -86,7 +86,7 @@ void MotionBase::SetType(int32_t type) {
 		case M_COMMUTATION: new(this) Commutation(); break;
 		case M_TRAPEZOIDAL: new(this) GroupTrapezoidalMotion(); break;
 		case M_THIRDORDER: new(this) ThirdOrderMotion(); break;
-		case M_MULTIPOINT: new(this) Multipoint(); break;
+		case M_MULTIPOINT: case M_MULTIPOINTTB: new(this) Multipoint(); break;
 		case M_RECIPROCATED: new(this) Reciprocated(); break;
 		default: new(this) MotionBase();
 	} 
@@ -664,27 +664,64 @@ void TimeBased::Tick() {
 	}
 }
 
-Multipoint::Multipoint() { Servo->FifoFlush(); phase = 0;}
-
+Multipoint::Multipoint() { 
+	phase = 0;
+	Servo->GfSlot = (Type == M_MULTIPOINT) ? Servo->Gnax : Servo->Gnax + 1;
+	Servo->FifoFlush(); 
+}
+void Multipoint::FirstSegment() {
+	Servo->GroupSetTPos(p1);
+	p = EuclidAndCos(p0, p1, c, Servo->Gbax);
+	if (Type == M_MULTIPOINT) {
+		v = Servo->Vel; a = Servo->Acc; j = Servo->Jerk;
+		tj = a / j; 
+		if (tj < SECONDS_IN_TICK*0.5F) { tj = SECONDS_IN_TICK*0.5F; j = a / tj; }
+		ta = v / a;
+		if (ta < tj) { ta = tj; a = v / ta; j = a / tj; }
+		tv = p / v;
+		if (tv < ta + tj) { tv = ta + tj; v = p / tv; a = v / ta; j = a / tj; }
+	} else if (Type == M_MULTIPOINTTB) {
+		tj = MTj; ta = MTa; tv = p1[Servo->Gnax];
+		if (tj < SECONDS_IN_TICK*0.5F) { tj = SECONDS_IN_TICK*0.5F; }
+		if (ta < tj) { ta = tj; }
+		if (tv < ta + tj) { tv = ta + tj; }
+		v = p / tv; a = v / ta; j = a / tj; 
+	}
+	for (int i = 0; i < Servo->Gnax; i++) {
+		j0[i] = j * c[i]; a0[i] = 0; v0[i] = 0;
+	}
+	time = t0 = 0;
+	phase = 1;
+}
+void Multipoint::NextSegment() {
+	Servo->GroupSetTPos(p2);
+	p = EuclidAndCos(p1, p2, c, Servo->Gbax);	
+	if (Type == M_MULTIPOINT) {
+		v = Servo->Vel; 
+		tv = p / v;
+		if (tv < ta + tj) { tv = ta + tj; v = p / tv; }
+		a = v / ta; j = a / tj; 
+	} else if (Type == M_MULTIPOINTTB) {
+		tj = MTj; ta = MTa; tv = p2[Servo->Gnax];
+		if (tj < SECONDS_IN_TICK*0.5F) { tj = SECONDS_IN_TICK*0.5F; }
+		if (ta < tj) { ta = tj; }
+		if (tv < ta + tj) { tv = ta + tj; }
+		v = p / tv; a = v / ta; j = a / tj; 
+	}
+	for (int i = 0; i < Servo->Gnax; i++) {
+		float v1 = v * c[i];
+		float a1 = (v1 - v0[i]) / ta;
+		j0[i] = a1 / tj;
+		p1[i] = p2[i];
+	}
+	phase = 1;
+}
 void Multipoint::Tick() {
 	if (phase == 0) {
 		while (Servo->FifoRead(p1)) {
 			Servo->GroupGetRPos(p0);
 			if (Changed(p0, p1, Servo->Gnax) && Servo->GroupValidatePositionLoop()) {
-				Servo->GroupSetTPos(p1);
-				p = EuclidAndCos(p0, p1, c, Servo->Gbax);
-				v = Servo->Vel; a = Servo->Acc; j = Servo->Jerk;
-				tj = a / j; 
-				if (tj < SECONDS_IN_TICK*0.5F) { tj < SECONDS_IN_TICK*0.5F; j = a / tj; }
-				ta = v / a;
-				if (ta < tj) { ta = tj; a = v / ta; j = a / tj; }
-				tv = p / v;
-				if (tv < ta + tj) { tv = ta + tj; v = p / tv; a = v / ta; j = a / tj; }
-				for (int i = 0; i < Servo->Gnax; i++) {
-					j0[i] = j * c[i]; a0[i] = 0; v0[i] = 0;
-				}
-				time = t0 = 0;
-				phase = 1;
+				FirstSegment();
 				break;
 			}
 		}
@@ -772,22 +809,7 @@ void Multipoint::Tick() {
 						}
 					}
 					if ((Join == 3) && (Servo->FifoRead(p2))) {
-						// if (Changed(p1, p2, Servo->Gnax)) {
-							Servo->GroupSetTPos(p2);
-							p = EuclidAndCos(p1, p2, c, Servo->Gbax);	// blending
-							v = Servo->Vel; 
-							tv = p / v;
-							if (tv < ta + tj) { tv = ta + tj; v = p / tv; }
-							a = v / ta; j = a / tj; 
-							for (int i = 0; i < Servo->Gnax; i++) {
-								float v1 = v * c[i];
-								float a1 = (v1 - v0[i]) / ta;
-								j0[i] = a1 / tj;
-								p1[i] = p2[i];
-							}
-							phase = 1;
-							// break;
-						// }
+						NextSegment();
 					} else {
 						for (int i = 0; i < Servo->Gnax; i++) {
 							j0[i] = j * c[i]; a0[i] = 0;

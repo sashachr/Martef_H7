@@ -15,7 +15,8 @@
 #define M_LINE2			100
 #define M_ARC2			101
 #define M_MULTIPOINT	103
-#define M_RECIPROCATED	105
+#define M_MULTIPOINTTB	104
+#define M_RECIPROCATED	113
 #define M_DEFAULT		M_MULTIPOINT
 
 // Joining
@@ -194,13 +195,15 @@ public:
 	float p, v, a, j;
 	float tv, ta, tj;
 	float time;
-	float p0[NAX], p1[NAX], p2[NAX];
+	float p0[NAX+1], p1[NAX+1], p2[NAX+1];
 	float v0[NAX], a0[NAX], j0[NAX], t0;
 	float c[NAX];
 	Multipoint();
 	virtual void Tick();
 	virtual void Kill();
 	uint8_t Changed(float* a, float* b, int n) { for (int i = 0; i < n; i++) if (*a++ != *b++) return 1; return 0; }
+	void FirstSegment();
+	void NextSegment();
 };
 
 class Reciprocated : public MotionBase {
