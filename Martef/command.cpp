@@ -8,7 +8,6 @@
 #include "global.h"
 #include "sysvar.h"
 #include "flash.h"
-#include "gitversion.h"
 #include "communication.h"
 #include "command.h"
 
@@ -43,27 +42,6 @@ enum MRC_COMMAND {
 };
 
 #define nstrings 7
-// uint8_t* DStrings[nstrings];
-// uint16_t DStringsLen[nstrings];
-// MultiBufStruct Strings;
-// MultiBufStruct Guids;
-
-/*__attribute__((section(".ramD1init")))*/ const uint8_t ProductString[] = "Martef-H7";
-/*__attribute__((section(".ramD1init")))*/ const uint8_t ManufacturerString[] = "XACT Robotics";
-__attribute__((section(".ramD1"))) uint8_t SerialNumberString[60];
-__attribute__((section(".ramD1"))) uint8_t ApplicationString[60];
-/*__attribute__((section(".ramD2init")))*/const uint8_t CdfString[] = 
-	#include "xact.cdc"
-	"\x00\x00\x00"	// for alignment
-;
-__attribute__((section(".ramD1init"))) static uint8_t emptystring[1] = { 0 };
-#define nguids 5
-const GUID GuidProduct = { 0x6729d920, 0xcb01, 0x4119, { 0x90, 0x5e, 0xc5, 0x55, 0x2b, 0xea, 0x14, 0x1c } }; // {6729D920-CB01-4119-905E-C5552BEA141C}
-const GUID GuidManufacturer = { 0xebb27f3b, 0x758f, 0x4dbe, { 0x94, 0x93, 0x4, 0x9f, 0xec, 0x2e, 0x8f, 0x22 } };  // {EBB27F3B-758F-4DBE-9493-049FEC2E8F22}
-__attribute__((section(".ramD1"))) GUID GuidUnit;
-__attribute__((section(".ramD1init"))) GUID GuidFwVersion { 0, 0, 0, { 0, 0, 0, 0, 0, 0, 0, 0 } };
-const static GUID emptyguid { 0, 0, 0, { 0, 0, 0, 0, 0, 0, 0, 0 } };
-
 const uint8_t* Strings[nstrings] = {
 	ProductString,
 	ManufacturerString,
@@ -73,12 +51,12 @@ const uint8_t* Strings[nstrings] = {
 	0, //ApplicationString,
 	CdfString, // Controller Definition File
 };
-uint16_t tstrl = 0;
+#define nguids 5
 const GUID* Guids[nguids] = {
-	&GuidProduct,
-	&GuidManufacturer,
-	&GuidUnit,
-	&GuidFwVersion,
+	&ProductGuid,
+	&ManufacturerGuid,
+	&UnitGuid,
+	&VersionGuid,
 	0
 };
 
@@ -246,7 +224,7 @@ GPIOF->BSRR = 0x20000000;                  // F13 = 0
 			BufStruct* d = t->Mbuf.Bufs;
 			d++->Count = 12;
 			for (int i = 0; i < count; i++,s++,d++) { 
-				uint8_t* s1 = ((*s == 0) || (**s == 0xFF)) ? emptystring : *s;
+				uint8_t* s1 = ((*s == 0) || (**s == 0xFF)) ? (uint8_t*)emptystring : *s;
 				int n = strlen((const char*)s1) + 1;
 				repl += n;  
 				d->Addr = s1;  
@@ -294,21 +272,20 @@ GPIOF->BSRR = 0x20000000;                  // F13 = 0
 			if (clen < 8) BREAK(MRE_FORMAT)
             if (FlashIsLocked()) BREAK(MRE_FLASHLOCKED)
 			uint32_t op = *(uint16_t*)(com+6), ind = *(uint16_t*)(com+8), count = *(uint16_t*)(com+10);
-			if ((count<<2) > PROGRAM_BLOCK) BREAK(MRE_FORMAT)
+			if ((count<<2) > 256) BREAK(MRE_FORMAT)
             switch (op) {
                 case 1:    // Erase
         			if (clen != 12) BREAK(MRE_FORMAT)
-                    if (ind+count > 3) BREAK(MRE_ILLEGALINDEX)
-                    for (uint32_t i=0; i<count; i++) if (FlashUpgradeErase(ind+i) != 0) BREAK(MRE_FLASHERASEFAILED)
+					if (FlashUpgradeErase() != 0) BREAK(MRE_FLASHERASEFAILED)
                     break;
                 case 2:     // Write
         			if (clen != 12+(count<<2)) BREAK(MRE_FORMAT)
-                    if (FlashUpgradeWrite(ind<<6, (uint32_t*)(com+12), count<<2) != 0) BREAK(MRE_FLASHWRITEFAILED)
+                    if (FlashUpgradeWrite(0x0080 + (ind<<8), (uint32_t*)(com+12), count<<2) != 0) BREAK(MRE_FLASHWRITEFAILED)
                     break;
                 case 3:     // Validate
         			if (clen != 20) BREAK(MRE_FORMAT)
                     if ((ind != 0) || (count != 2)) BREAK(MRE_ILLEGALINDEX)
-                    if (FlashUpgradeInfo((uint32_t*)(com+12)) != 0) BREAK(MRE_FLASHWRITEFAILED)
+                    if (FlashUpgradeWrite(0, (uint32_t*)(com+12), 8) != 0) BREAK(MRE_FLASHWRITEFAILED)
                     if (FlashValidateUpgrade()) BREAK(MRE_FLASHCHECKSUM)
                     break;
                 case 4:     // Invalidate firmware and restart
@@ -356,9 +333,9 @@ void CommandInit() {
 	// };
 	// uint16_t tstrl = 0;
 	// const GUID* guids[nguids] = {
-	// 	&GuidProduct,
-	// 	&GuidManufacturer,
-	// 	&GuidUnit,
+	// 	&ProductGuid,
+	// 	&ManufacturerGuid,
+	// 	&UnitGuid,
 	// 	&GuidFwVersion,
 	// 	0
 	// };
@@ -377,7 +354,7 @@ void CommandInit() {
 	// }
 	// // Build MDMA links for GUIDS
     // uint32_t CTCR = 0x7000000A;        // Software request, TRGM Full Transfer, byte sizes, no burst, source/target increment 
-	uint32_t *d = (uint32_t*)&GuidUnit, *s = (uint32_t*)0x1FF1E800;
+	uint32_t *d = (uint32_t*)&UnitGuid, *s = (uint32_t*)0x1FF1E800;
 	*d++ = 0x37484D20;	// MH7
 	*d++ = *s++; *d++ = *s++; *d++ = *s++; 
 	// for (int i = 0; i < nguids; i++) {

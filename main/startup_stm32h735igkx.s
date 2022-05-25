@@ -306,8 +306,7 @@ g_pfnVectors:
   .word     FDCAN3_IT1_IRQHandler             /* FDCAN3 interrupt line 1  */
   .word     TIM23_IRQHandler                  /* TIM23 global interrupt   */
   .word     TIM24_IRQHandler                  /* TIM24 global interrupt   */
-  .word     _siramD1init                      /* Product Guid             */
-
+  
 /*******************************************************************************
 *
 * Provide weak aliases for each Exception handler to the Default_Handler.

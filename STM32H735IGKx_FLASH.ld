@@ -37,7 +37,7 @@ ENTRY(Reset_Handler)
 
 /* Highest address of the user mode stack */
 _estack = ORIGIN(RAM_D1) + LENGTH(RAM_D1);    /* end of RAM */
-_isr_start = ORIGIN(FLASH_FIRM);
+_isr_start = ORIGIN(FLASH_FIRMWARE);
 /* Generate a link error if heap and stack don't fit into RAM */
 _Min_Heap_Size = 0x1000 ;      /* required amount of heap  */
 _Min_Stack_Size = 0x1000 ; /* required amount of stack */
@@ -45,29 +45,47 @@ _Min_Stack_Size = 0x1000 ; /* required amount of stack */
 /* Specify the memory areas */
 MEMORY
 {
-  /* FLASH_BOOT (rx)  : ORIGIN = 0x08000000,   LENGTH = 128K */
-  FLASH_APP (rx)   : ORIGIN = 0x08020000,   LENGTH = 128K
-  FLASH_FIRM (rx)  : ORIGIN = 0x08040000,   LENGTH = 256K
-  FLASH_CACHE (rx) : ORIGIN = 0x080A0000,   LENGTH = 256K
-  ITCMRAM (xrw)    : ORIGIN = 0x00000000,   LENGTH = 64K
-  DTCMRAM (xrw)    : ORIGIN = 0x20000000,   LENGTH = 128K
-  RAM_D1  (xrw)    : ORIGIN = 0x24000000,   LENGTH = 320K
-  RAM_D2  (xrw)    : ORIGIN = 0x30000000,   LENGTH = 32K
-  RAM_D3  (xrw)    : ORIGIN = 0x38000000,   LENGTH = 16K
+  /* FLASH_BOOT (rx)        : ORIGIN = 0x08000000,   LENGTH = 128K */
+  FLASH_APP (r)             : ORIGIN = 0x08020000,   LENGTH = 128K
+  FLASH_CHECKSUM (r)        : ORIGIN = 0x08040000,   LENGTH = 0x0080 
+  FLASH_GUIDS (r)           : ORIGIN = 0x08040080,   LENGTH = 0x0080
+  FLASH_FIRMWARE (rx)       : ORIGIN = 0x08040100,   LENGTH = 256K - 0x0100
+  FLASH_CACHE (rx)          : ORIGIN = 0x080A0000,   LENGTH = 256K
+  ITCMRAM (xrw)             : ORIGIN = 0x00000000,   LENGTH = 64K
+  DTCMRAM (xrw)             : ORIGIN = 0x20000000,   LENGTH = 128K
+  RAM_D1  (xrw)             : ORIGIN = 0x24000000,   LENGTH = 320K
+  RAM_D2  (xrw)             : ORIGIN = 0x30000000,   LENGTH = 32K
+  RAM_D3  (xrw)             : ORIGIN = 0x38000000,   LENGTH = 16K
 }
 
 /* Define output sections */
 SECTIONS
 {
-  /* The vector table goes first into FLASH_FIRM */
+  /* GUIDs */
+  .guids :
+  {
+    . = ALIGN(4);
+    KEEP(*(.guids))
+    . = ALIGN(4);
+  } >FLASH_GUIDS
+
+  /* The vector table goes first into FLASH_FIRMWARE */
   .isr_vector :
   {
     . = ALIGN(4);
-    KEEP(*(.isr_vector)) /* Startup code */
+    KEEP(*(.isr_vector)) /* Interrupt vectors */
     . = ALIGN(4);
-  } >FLASH_FIRM
+  } >FLASH_FIRMWARE
 
-  /* The program code and other data goes into FLASH_FIRM */
+  /* Absolute IDS table */
+  .absolute_ids :
+  {
+    . = ALIGN(4);
+    KEEP(*(.absolute_ids)) /* Links to Firmware identificators in absolute positions */
+    . = ALIGN(4);
+  } >FLASH_IDS
+
+  /* The program code and other data goes into FLASH_FIRMWARE */
   .text :
   {
     . = ALIGN(4);
@@ -82,30 +100,30 @@ SECTIONS
 
     . = ALIGN(4);
     _etext = .;        /* define a global symbols at end of code */
-  } >FLASH_FIRM
+  } >FLASH_FIRMWARE
 
-  /* Constant data goes into FLASH_FIRM */
+  /* Constant data goes into FLASH_FIRMWARE */
   .rodata :
   {
     . = ALIGN(4);
     *(.rodata)         /* .rodata sections (constants, strings, etc.) */
     *(.rodata*)        /* .rodata* sections (constants, strings, etc.) */
     . = ALIGN(4);
-  } >FLASH_FIRM
+  } >FLASH_FIRMWARE
 
-  .ARM.extab   : { *(.ARM.extab* .gnu.linkonce.armextab.*) } >FLASH_FIRM
+  .ARM.extab   : { *(.ARM.extab* .gnu.linkonce.armextab.*) } >FLASH_FIRMWARE
   .ARM : {
     __exidx_start = .;
     *(.ARM.exidx*)
     __exidx_end = .;
-  } >FLASH_FIRM
+  } >FLASH_FIRMWARE
 
   .preinit_array     :
   {
     PROVIDE_HIDDEN (__preinit_array_start = .);
     KEEP (*(.preinit_array*))
     PROVIDE_HIDDEN (__preinit_array_end = .);
-  } >FLASH_FIRM
+  } >FLASH_FIRMWARE
 
   .init_array :
   {
@@ -113,7 +131,7 @@ SECTIONS
     KEEP (*(SORT(.init_array.*)))
     KEEP (*(.init_array*))
     PROVIDE_HIDDEN (__init_array_end = .);
-  } >FLASH_FIRM
+  } >FLASH_FIRMWARE
 
   .fini_array :
   {
@@ -121,7 +139,7 @@ SECTIONS
     KEEP (*(SORT(.fini_array.*)))
     KEEP (*(.fini_array*))
     PROVIDE_HIDDEN (__fini_array_end = .);
-  } >FLASH_FIRM
+  } >FLASH_FIRMWARE
 
   /* used by the startup to initialize data */
   _sidata = LOADADDR(.data);
@@ -138,7 +156,7 @@ SECTIONS
 
     . = ALIGN(4);
     _edata = .;        /* define a global symbol at data end */
-  } >DTCMRAM AT> FLASH_FIRM
+  } >DTCMRAM AT> FLASH_FIRMWARE
 
   /* Uninitialized data section */
   . = ALIGN(4);
@@ -188,11 +206,10 @@ SECTIONS
   {
     . = ALIGN(4);
     _sramD1init = .;
-    *(.guidProduct)
     *(.ramD1init)
     . = ALIGN(4);
     _eramD1init = .;
-  } >RAM_D1 AT> FLASH_FIRM
+  } >RAM_D1 AT> FLASH_FIRMWARE
   .ramD1zero : /* Space before ':' is critical */
   {
     . = ALIGN(4);
@@ -209,7 +226,7 @@ SECTIONS
     *(.TxDecripSection)
     . = ABSOLUTE(0x30000200);
     *(.RxArraySection) 
-  } >RAM_D2 AT> FLASH_FIRM 
+  } >RAM_D2 AT> FLASH_FIRMWARE 
   
 .ramD2 (NOLOAD) : /* Space before ':' is critical */
   {
@@ -227,7 +244,7 @@ SECTIONS
     *(.ramD2init)
     . = ALIGN(4);
     _eramD2init = .;
-  } >RAM_D2 AT> FLASH_FIRM
+  } >RAM_D2 AT> FLASH_FIRMWARE
   .ramD2zero : /* Space before ':' is critical */
   {
     . = ALIGN(4);
@@ -253,7 +270,7 @@ SECTIONS
     *(.ramD3init)
     . = ALIGN(4);
     _eramD3init = .;
-  } >RAM_D3 AT> FLASH_FIRM
+  } >RAM_D3 AT> FLASH_FIRMWARE
   .ramD3zero : /* Space before ':' is critical */
   {
     . = ALIGN(4);

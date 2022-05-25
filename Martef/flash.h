@@ -9,7 +9,7 @@ uint32_t FlashUnlock();
 uint32_t FlashEraseInitArea();
 uint32_t FlashSaveInitArea();
 uint32_t FlashGetInitArea();
-uint32_t FlashUpgradeErase(int sector);
+uint32_t FlashUpgradeErase();
 uint32_t FlashUpgradeWrite(uint32_t FlashOffs, uint32_t* Buf, uint32_t Len);
 uint32_t FlashUpgradeInfo(uint32_t* info);
 uint32_t FlashDiscardFirmware();

@@ -53,6 +53,29 @@ typedef uint8_t  byte;
 #define MaxInit				8*1024		// Length of initialization records area in words
 #define FlashChunk			40			// Length of flash communication block in bytes
 
+inline uint8_t Hex2Nibble(uint8_t hex) { return (hex <= '9') ? hex - '0' : (hex <= 'F') ? hex - 'A' + 10 : hex - 'a' + 10; }
+
+struct GUID {
+  uint32_t Data1;
+  uint16_t Data2;
+  uint16_t Data3;
+  uint8_t  Data4[8];
+};
+
+extern const uint8_t ProductString[];
+extern const uint8_t ManufacturerString[];
+extern const uint8_t GitVersion[];
+extern uint8_t SerialNumberString[60];
+extern uint8_t ApplicationString[60];
+extern const uint8_t CdfString[];
+extern const uint8_t emptystring[1];
+extern const struct GUID ProductGuid;
+extern const struct GUID ManufacturerGuid;
+extern struct GUID UnitGuid;
+extern const struct GUID VersionGuid;
+//extern struct GUID GuidFwVersion;
+extern const struct GUID GuidDummy;
+
 extern uint16_t HardId;
 extern uint16_t Initialization;
 //extern volatile uint8_t ExecProgram;
@@ -118,19 +141,11 @@ extern const uint16_t Application;
 extern const uint32_t Version;
 extern const uint32_t Serial;
 
-struct GUID {
-  uint32_t Data1;
-  uint16_t Data2;
-  uint16_t Data3;
-  uint8_t  Data4[8];
-};
+// extern uint32_t Properties[];
+// #define FLASH_PAGE (*(uint16_t*)Properties)
+// #define PROGRAM_BLOCK 256
 
-extern const struct GUID GuidDummy;
-extern uint32_t Properties[];
-#define FLASH_PAGE (*(uint16_t*)Properties)
-#define PROGRAM_BLOCK 64
-
-extern uint8_t Motor;      // 1/2/4/6/8/12/16/24=HR1/2/4/6/8/12/16/24, 101/102/104/106/108/112/116/124=SE1/2/4/6/8/12/16/24
+// extern uint8_t Motor;      // 1/2/4/6/8/12/16/24=HR1/2/4/6/8/12/16/24, 101/102/104/106/108/112/116/124=SE1/2/4/6/8/12/16/24
 
 #if defined(USE_DCACHE) 
     #define InvalidateDCacheIfUsed(addr, size) SCB_InvalidateDCache_by_Addr(addr, size) 
@@ -143,7 +158,7 @@ extern uint8_t Motor;      // 1/2/4/6/8/12/16/24=HR1/2/4/6/8/12/16/24, 101/102/1
 #endif
 
 
-void GetGuidUnit(uint32_t* dest);
+void GetUnitGuid(uint32_t* dest);
 inline void GuidFromString(struct GUID* guid, const uint8_t* str) {
     uint8_t* g = (uint8_t*)guid;
     for (int i = 0; i < 32; i++) {

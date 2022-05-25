@@ -138,7 +138,7 @@ void CommUart::TickRead() {
     if (readlen == 0) {
         InvalidateDCacheIfUsed(Trans.Inb, 6);
         readlen = *(uint16_t*)&Trans.Inb[4];
-        if ((readlen > 128) || (readlen < 8)) {StartRead(); return;}      // Garbage
+        if ((readlen > UARTINSIZE) || (readlen < 8)) {StartRead(); return;}      // Garbage
     }
     if ((n < readlen) || (WriteCount() > 0)) return;
     InvalidateDCacheIfUsed(Inbuf, readlen);
