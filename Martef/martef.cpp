@@ -25,6 +25,7 @@
 
 void MartefInit() {
     TimeInit();
+    PmcuDownload();
     CommunicationInit();
 //    IpInit();
     CommandInit();

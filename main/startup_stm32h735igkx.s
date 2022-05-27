@@ -32,6 +32,7 @@
 
 .global  g_pfnVectors
 .global  Default_Handler
+.global  PmcuFirmware
 
 /* start address for the initialization values of the .data section. defined in linker script */
 .word  _sidata /* start address for the .data section. defined in linker script */
@@ -307,6 +308,10 @@ g_pfnVectors:
   .word     TIM23_IRQHandler                  /* TIM23 global interrupt   */
   .word     TIM24_IRQHandler                  /* TIM24 global interrupt   */
   
+.section .pmcu
+PmcuFirmware:
+.incbin "C:\\Projects\\XactRobotics\\MartefH7\\MG4-fw\\Debug\\MarticG4.bin"
+
 /*******************************************************************************
 *
 * Provide weak aliases for each Exception handler to the Default_Handler.

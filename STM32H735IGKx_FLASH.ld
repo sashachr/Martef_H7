@@ -141,6 +141,15 @@ SECTIONS
     PROVIDE_HIDDEN (__fini_array_end = .);
   } >FLASH_FIRMWARE
 
+  .pmcu :
+  {
+    . = ALIGN(4);
+    _spmcu = .;
+    *(.pmcu)
+    . = ALIGN(4);
+    _epmcu = .;
+  } >FLASH_FIRMWARE
+
   /* used by the startup to initialize data */
   _sidata = LOADADDR(.data);
 

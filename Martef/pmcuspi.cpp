@@ -220,13 +220,62 @@ void PmcuSpiTickEnd() {
     for (int i=0; i<2; i++) pmcu[i].TickEnd();
 }
 
+void PmcuSpi::DownInit(uint8_t ind, uint8_t ispi) {
+    index  = ind;
+    spi = Spi::GetSpi(ispi);
+    Spi::EnableClock(ispi);
+    Spi::Init(spi, 0x00001201, 0x00000000, (ispi == 2) ? 0x40000007 : 0x30000007, 0x04400010); // Enable,start, endless, 8 MHz, 8-byte fifo, 8-bit data, MSB first, CPOL/CPHA=00, master
+}
+uint8_t PmcuSpi::DownGetAck() {
+    Spi::SendReceive(spi, 0);
+    uint8_t r = 0;
+    while ((r != 0x79) && (r != 0x1F)) r = Spi::SendReceive(spi, 0);
+    Spi::SendReceive(spi, 0x79);
+    return r == 0x79;
+}
+uint8_t PmcuSpi::DownSynchro() {
+    while (1) {
+        Spi::SendReceive(spi, 0x5A);
+        if (DownGetAck()) return 1;
+    }
+    return 0;
+}
+uint8_t PmcuSpi::DownCommand(uint8_t com) {
+    uint8_t c[] = { 0x5A, com, ~com};
+    Spi::SendBlock(spi, c, 3);
+    return DownGetAck();
+}
+uint8_t PmcuSpi::DownChunk(uint8_t* b, int count, int addr) {
+    if (!DownCommand(0x31)) return 0;
+    uint8_t a[] = { addr >> 24, addr >> 16, addr >> 8, addr };
+    Spi::SendBlock(spi, a, 4);
+    if (!DownGetAck()) return 0;
+    Spi::SendData(spi, b, count);
+    return DownGetAck();
+}
+uint8_t PmcuSpi::Download() {
+    DownSynchro();
+    extern int32_t _spmcu, _epmcu;
+    int len = _epmcu - _spmcu;
+    int addr = 0x08000000;
+    uint8_t* b = (uint8_t*)_spmcu;
+    while (len > 0) {
+        int l = (len < 256) ? len : 256;
+        DownChunk(b, l, addr);
+        b += l; addr += l; len -= l;
+    }
+}
+
 void PmcuSpiInit() {
     pmcu[0].Init(0, 2, 4); pmcu[1].Init(1, 5, 6);
-//    spiOutBuf[0][0] = 0xA0A0;
-//    spiOutBuf[1][0] = 0xA0A0;
-//    for (int i=1; i<10; i++) {
-//        spiOutBuf[0][i] = i;
-//        spiOutBuf[1][i] = i;
-//    }
+}
+
+void PmcuDownload() {
+    GPIOF->BSRR = 0x00004040;                  // F6/14 = 1 (NSS)
+    pmcu[0].DownInit(0, 2); pmcu[1].DownInit(1, 5);
+    GPIOF->BSRR = 0x40400000;                  // F6/14 = 0 (NSS)
+    pmcu[0].Download();
+    pmcu[1].Download();
+    GPIOF->BSRR = 0x00004040;                  // F6/14 = 1 (NSS)
 }
 

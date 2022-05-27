@@ -45,6 +45,39 @@ class Spi {
     public: static void Stop(SPI_TypeDef* spi) { spi->CR1 &= ~0x00000201; spi->CFG1 & ~0x0000c000; spi->IFCR = 0x00000FF8; }
     public: static void Start(SPI_TypeDef* spi) { uint32_t c = spi->CR1; spi->CR1 = c | 1; spi->CR1 = c | 0x00000201; }
     public: static void EnableDma(SPI_TypeDef* spi) { spi->CFG1 |= 0x0000c000; }
+    // low-level operations for firmware downloading
+    public: static uint8_t SendReceive(SPI_TypeDef* spi, uint8_t b) { 
+        *(uint8_t*)&spi->TXDR = b; 
+        Start(spi);
+        while ((spi->SR & 0x00001000) == 0) ;   // wait for transfer end
+        return spi->RXDR;
+    }
+    public: static uint8_t SendBlock(SPI_TypeDef* spi, uint8_t* b, int count) {
+        uint8_t cs = *b;
+        *(uint8_t*)&spi->TXDR = *b++;
+        Start(spi);
+        for (int i = 1; i < count; i++) {
+            while ((spi->SR & 0x00000002) == 0) ;   // wait for TxFIFO space available
+            cs ^= *b;
+            *(uint8_t*)&spi->TXDR = *b++;
+        }
+        while ((spi->SR & 0x00000002) == 0) ;   // wait for TxFIFO space available
+        *(uint8_t*)&spi->TXDR = cs;
+        while ((spi->SR & 0x00001000) == 0) ;   // wait for transfer end
+    } 
+    public: static uint8_t SendData(SPI_TypeDef* spi, uint8_t* b, int count) {
+        *(uint8_t*)&spi->TXDR = count - 1;
+        Start(spi);
+        uint8_t cs = 0;
+        for (int i = 0; i < count; i++) {
+            while ((spi->SR & 0x00000002) == 0) ;   // wait for TxFIFO space available
+            cs ^= *b;
+            *(uint8_t*)&spi->TXDR = *b++;
+        }
+        while ((spi->SR & 0x00000002) == 0) ;   // wait for TxFIFO space available
+        *(uint8_t*)&spi->TXDR = cs;
+        while ((spi->SR & 0x00001000) == 0) ;   // wait for transfer end
+    } 
 };
 
 class ServoStruct;
@@ -70,10 +103,19 @@ class PmcuSpi {
     public: void StartTransfer() { Dma::Enable(txStream); }
     uint32_t cnt;
     uint32_t faultcount;
+
+    // Support of downloading PMCU firmware
+    void DownInit(uint8_t ind, uint8_t ispi);
+    uint8_t DownGetAck();
+    uint8_t DownSynchro();
+    uint8_t DownCommand(uint8_t com);
+    uint8_t DownChunk(uint8_t* b, int count, int addr);
+    uint8_t Download();
 };
 
 void PmcuSpiInit();
 void PmcuSpiTickStart();
 void PmcuSpiTickEnd();
+void PmcuDownload();
 
 
