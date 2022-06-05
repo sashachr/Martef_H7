@@ -25,7 +25,6 @@
 
 void MartefInit() {
     TimeInit();
-    PmcuDownload();
     CommunicationInit();
 //    IpInit();
     CommandInit();
@@ -34,11 +33,12 @@ void MartefInit() {
     ServoInit();
     Adc.Init();
     Scope.Init();
-    PmcuSpiInit();
 	ThreadsInit();
     FlashGetInitArea();
-	SysTickInit();
 	PinsInit();
+    PmcuDownload();
+    PmcuSpiInit();
+	SysTickInit();
     EthInit();
 }
 

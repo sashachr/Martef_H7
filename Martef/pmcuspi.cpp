@@ -274,7 +274,7 @@ void PmcuDownload() {
     GPIOF->BSRR = 0x00004040;                  // F6/14 = 1 (NSS)
     pmcu[0].DownInit(0, 2); pmcu[1].DownInit(1, 5);
     GPIOF->BSRR = 0x40400000;                  // F6/14 = 0 (NSS)
-    pmcu[0].Download();
+    // pmcu[0].Download();
     pmcu[1].Download();
     GPIOF->BSRR = 0x00004040;                  // F6/14 = 1 (NSS)
 }
