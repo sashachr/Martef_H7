@@ -224,12 +224,12 @@ void PmcuSpi::DownInit(uint8_t ind, uint8_t ispi) {
     index  = ind;
     spi = Spi::GetSpi(ispi);
     Spi::EnableClock(ispi);
-    Spi::Init(spi, 0x00001201, 0x00000000, (ispi == 2) ? 0x40000007 : 0x30000007, 0x04400010); // Enable,start, endless, 8 MHz, 8-byte fifo, 8-bit data, MSB first, CPOL/CPHA=00, master
+    Spi::Init(spi, 0x00001201, 0x00000000, (ispi == 2) ? 0x70000007 : 0x60000007, 0x04400010); // Enable,start, endless, 1 MHz, 8-byte fifo, 8-bit data, MSB first, CPOL/CPHA=00, master
 }
 uint8_t PmcuSpi::DownGetAck() {
     Spi::SendReceive(spi, 0);
     uint8_t r = 0;
-    while ((r != 0x79) && (r != 0x1F)) r = Spi::SendReceive(spi, 0);
+    while ((r != 0x79) && (r != 0x1F)) r = Spi::SendReceive(spi, 0xAA);
     Spi::SendReceive(spi, 0x79);
     return r == 0x79;
 }

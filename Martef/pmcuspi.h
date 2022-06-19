@@ -50,7 +50,8 @@ class Spi {
         *(uint8_t*)&spi->TXDR = b; 
         Start(spi);
         while ((spi->SR & 0x00001000) == 0) ;   // wait for transfer end
-        return spi->RXDR;
+        uint8_t r = *(uint8_t*)&spi->RXDR;
+        return r;
     }
     public: static uint8_t SendBlock(SPI_TypeDef* spi, uint8_t* b, int count) {
         uint8_t cs = *b;

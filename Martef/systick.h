@@ -5,5 +5,6 @@
 #pragma once
 
 uint32_t SysTickInit();
+uint32_t SysTickIntDisable();
 
 

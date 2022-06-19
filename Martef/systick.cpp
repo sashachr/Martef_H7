@@ -12,6 +12,9 @@ uint32_t SysTickInit() {
 	}
 	return 0;
 }
+uint32_t SysTickIntDisable() {
+	SysTick->CTRL &= ~0x00000002;
+}
 
 //extern "C" __thumb void SysTick_Handler();
 extern "C" __attribute__((naked,noreturn,optimize("-O3"))) void SysTick_Handler() {

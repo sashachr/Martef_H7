@@ -24,6 +24,7 @@
 #include "martef.h"
 
 void MartefInit() {
+    SysTickIntDisable();
     TimeInit();
     CommunicationInit();
 //    IpInit();
