@@ -53,32 +53,32 @@ class Spi {
         uint8_t r = *(uint8_t*)&spi->RXDR;
         return r;
     }
-    public: static uint8_t SendBlock(SPI_TypeDef* spi, uint8_t* b, int count) {
-        uint8_t cs = *b;
-        *(uint8_t*)&spi->TXDR = *b++;
-        Start(spi);
-        for (int i = 1; i < count; i++) {
-            while ((spi->SR & 0x00000002) == 0) ;   // wait for TxFIFO space available
-            cs ^= *b;
-            *(uint8_t*)&spi->TXDR = *b++;
-        }
-        while ((spi->SR & 0x00000002) == 0) ;   // wait for TxFIFO space available
-        *(uint8_t*)&spi->TXDR = cs;
-        while ((spi->SR & 0x00001000) == 0) ;   // wait for transfer end
-    } 
-    public: static uint8_t SendData(SPI_TypeDef* spi, uint8_t* b, int count) {
-        *(uint8_t*)&spi->TXDR = count - 1;
-        Start(spi);
-        uint8_t cs = 0;
-        for (int i = 0; i < count; i++) {
-            while ((spi->SR & 0x00000002) == 0) ;   // wait for TxFIFO space available
-            cs ^= *b;
-            *(uint8_t*)&spi->TXDR = *b++;
-        }
-        while ((spi->SR & 0x00000002) == 0) ;   // wait for TxFIFO space available
-        *(uint8_t*)&spi->TXDR = cs;
-        while ((spi->SR & 0x00001000) == 0) ;   // wait for transfer end
-    } 
+    // public: static uint8_t SendBlock(SPI_TypeDef* spi, uint8_t* b, int count) {
+    //     uint8_t cs = *b;
+    //     *(uint8_t*)&spi->TXDR = *b++;
+    //     Start(spi);
+    //     for (int i = 1; i < count; i++) {
+    //         while ((spi->SR & 0x00000002) == 0) ;   // wait for TxFIFO space available
+    //         cs ^= *b;
+    //         *(uint8_t*)&spi->TXDR = *b++;
+    //     }
+    //     while ((spi->SR & 0x00000002) == 0) ;   // wait for TxFIFO space available
+    //     *(uint8_t*)&spi->TXDR = cs;
+    //     while ((spi->SR & 0x00001000) == 0) ;   // wait for transfer end
+    // } 
+    // public: static uint8_t SendData(SPI_TypeDef* spi, uint8_t* b, int count) {
+    //     *(uint8_t*)&spi->TXDR = count - 1;
+    //     Start(spi);
+    //     uint8_t cs = 0;
+    //     for (int i = 0; i < count; i++) {
+    //         while ((spi->SR & 0x00000002) == 0) ;   // wait for TxFIFO space available
+    //         cs ^= *b;
+    //         *(uint8_t*)&spi->TXDR = *b++;
+    //     }
+    //     while ((spi->SR & 0x00000002) == 0) ;   // wait for TxFIFO space available
+    //     *(uint8_t*)&spi->TXDR = cs;
+    //     while ((spi->SR & 0x00001000) == 0) ;   // wait for transfer end
+    // } 
 };
 
 class ServoStruct;
@@ -110,8 +110,10 @@ class PmcuSpi {
     uint8_t DownGetAck();
     uint8_t DownSynchro();
     uint8_t DownCommand(uint8_t com);
-    uint8_t DownChunk(uint8_t* b, int count, int addr);
-    uint8_t Download();
+    uint8_t DownAddress(uint32_t addr);
+    uint8_t DownChunk(uint8_t* buf, int count, uint32_t addr);
+    uint8_t Download(uint8_t* buf, int count, uint32_t addr);
+    uint8_t DownStart(uint32_t addr);
 };
 
 void PmcuSpiInit();

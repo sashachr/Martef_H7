@@ -220,6 +220,7 @@ void PmcuSpiTickEnd() {
     for (int i=0; i<2; i++) pmcu[i].TickEnd();
 }
 
+// ------------------ Start up downloading
 void PmcuSpi::DownInit(uint8_t ind, uint8_t ispi) {
     index  = ind;
     spi = Spi::GetSpi(ispi);
@@ -228,8 +229,8 @@ void PmcuSpi::DownInit(uint8_t ind, uint8_t ispi) {
 }
 uint8_t PmcuSpi::DownGetAck() {
     Spi::SendReceive(spi, 0);
-    uint8_t r = 0;
-    while ((r != 0x79) && (r != 0x1F)) r = Spi::SendReceive(spi, 0xAA);
+    uint8_t r = 0, i = 0;
+    while ((r != 0x79) && (r != 0x1F) && (++i < 10)) r = Spi::SendReceive(spi, 0xAA);
     Spi::SendReceive(spi, 0x79);
     return r == 0x79;
 }
@@ -241,29 +242,48 @@ uint8_t PmcuSpi::DownSynchro() {
     return 0;
 }
 uint8_t PmcuSpi::DownCommand(uint8_t com) {
-    uint8_t c[] = { 0x5A, com, ~com};
-    Spi::SendBlock(spi, c, 3);
+    Spi::SendReceive(spi, 0x5A);
+    Spi::SendReceive(spi, com);
+    Spi::SendReceive(spi, ~com);
     return DownGetAck();
 }
-uint8_t PmcuSpi::DownChunk(uint8_t* b, int count, int addr) {
-    if (!DownCommand(0x31)) return 0;
-    uint8_t a[] = { addr >> 24, addr >> 16, addr >> 8, addr };
-    Spi::SendBlock(spi, a, 4);
-    if (!DownGetAck()) return 0;
-    Spi::SendData(spi, b, count);
-    return DownGetAck();
-}
-uint8_t PmcuSpi::Download() {
-    DownSynchro();
-    extern int32_t _spmcu, _epmcu;
-    int len = _epmcu - _spmcu;
-    int addr = 0x08000000;
-    uint8_t* b = (uint8_t*)_spmcu;
-    while (len > 0) {
-        int l = (len < 256) ? len : 256;
-        DownChunk(b, l, addr);
-        b += l; addr += l; len -= l;
+uint8_t PmcuSpi::DownAddress(uint32_t addr) {
+    uint8_t cs = 0, c;
+    for (int i = 0; i < 4; i++) {
+        uint8_t c = (uint8_t)((addr >> (24 - i*8)) & 0x000000FF);
+        Spi::SendReceive(spi, c);
+        cs ^= c;
     }
+    Spi::SendReceive(spi, cs);
+    return DownGetAck();
+}
+uint8_t PmcuSpi::DownChunk(uint8_t* buf, int count, uint32_t addr) {
+    if (!DownCommand(0x31)) return 0;   // write memory
+    if (!DownAddress(addr)) return 0;
+    uint8_t c = (uint8_t)((count - 1) & 0x000000FF);
+    Spi::SendReceive(spi, c);
+    uint8_t cs = c;
+    for (int i = 0; i < count; i++) {
+        Spi::SendReceive(spi, *buf);
+        cs ^= *buf++;
+    }
+    Spi::SendReceive(spi, cs);
+    return DownGetAck();
+}
+uint8_t PmcuSpi::Download(uint8_t* buf, int count, uint32_t addr) {
+    DownSynchro();
+    while (count > 0) {
+        int c = (count < 256) ? count : 256;
+        if (!DownChunk(buf, c, addr))
+        	return 0;
+        buf += c; addr += c; count -= c;
+    }
+    return 1;
+}
+uint8_t PmcuSpi::DownStart(uint32_t addr) {
+    if (!DownCommand(0x21)) return 0;   // go
+    if (!DownAddress(addr)) return 0;
+    return 1;
 }
 
 void PmcuSpiInit() {
@@ -271,11 +291,16 @@ void PmcuSpiInit() {
 }
 
 void PmcuDownload() {
+    extern int32_t _spmcu, _epmcu;
+    uint64_t *_s = (uint64_t*)&_spmcu, *_e = (uint64_t*)&_epmcu;
+    while (*(_e - 1) == 0xFFFFFFFFFFFFFFFF) _e--;
+    int len = (_e - _s) << 3;
     GPIOF->BSRR = 0x00004040;                  // F6/14 = 1 (NSS)
     pmcu[0].DownInit(0, 2); pmcu[1].DownInit(1, 5);
     GPIOF->BSRR = 0x40400000;                  // F6/14 = 0 (NSS)
-    // pmcu[0].Download();
-    pmcu[1].Download();
+    // pmcu[0].Download((uint8_t*)&_spmcu, len, 0x08002000);
+    pmcu[1].Download((uint8_t*)&_spmcu, len, 0x08002000);
+    pmcu[1].DownStart(0x08002000);
     GPIOF->BSRR = 0x00004040;                  // F6/14 = 1 (NSS)
 }
 

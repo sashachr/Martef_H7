@@ -143,10 +143,10 @@ SECTIONS
 
   .pmcu :
   {
-    . = ALIGN(4);
+    . = ALIGN(8);
     _spmcu = .;
-    *(.pmcu)
-    . = ALIGN(4);
+    KEEP(*(.pmcu))
+    . = ALIGN(8);
     _epmcu = .;
   } >FLASH_FIRMWARE
 

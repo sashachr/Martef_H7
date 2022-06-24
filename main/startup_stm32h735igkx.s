@@ -308,7 +308,7 @@ g_pfnVectors:
   .word     TIM23_IRQHandler                  /* TIM23 global interrupt   */
   .word     TIM24_IRQHandler                  /* TIM24 global interrupt   */
   
-.section .pmcu
+.section .pmcu,"a",%progbits
 PmcuFirmware:
 .incbin "C:\\Projects\\XactRobotics\\MartefH7\\MG4-fw\\Debug\\MarticG4.bin"
 
