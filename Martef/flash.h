@@ -13,6 +13,7 @@ uint32_t FlashUpgradeErase();
 uint32_t FlashUpgradeWrite(uint32_t FlashOffs, uint32_t* Buf, uint32_t Len);
 uint32_t FlashUpgradeInfo(uint32_t* info);
 uint32_t FlashDiscardFirmware();
+uint32_t FlashCalculateCrc(void* start, int bytes);
 uint32_t FlashSaveFirmwareData(uint32_t length, uint32_t crc);
 uint8_t FlashValidateFirmware();
 uint8_t FlashValidateUpgrade();

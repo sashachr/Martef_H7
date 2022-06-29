@@ -3,6 +3,7 @@
 #include "global.h"
 #include "martef.h"
 #include "timer.h"
+#include "flash.h"
 #include "adc.h"
 #include "servo.h"
 #include "pmcuspi.h"
@@ -220,32 +221,56 @@ void PmcuSpiTickEnd() {
     for (int i=0; i<2; i++) pmcu[i].TickEnd();
 }
 
-// ------------------ Start up downloading
+// ------------------ Start up validation/downloading
+
+uint8_t PmcuFailure[6];
+static uint32_t dllog[1024];
+static uint32_t ilog;
+
 void PmcuSpi::DownInit(uint8_t ind, uint8_t ispi) {
     index  = ind;
     spi = Spi::GetSpi(ispi);
     Spi::EnableClock(ispi);
     Spi::Init(spi, 0x00001201, 0x00000000, (ispi == 2) ? 0x70000007 : 0x60000007, 0x04400010); // Enable,start, endless, 1 MHz, 8-byte fifo, 8-bit data, MSB first, CPOL/CPHA=00, master
 }
-uint8_t PmcuSpi::DownGetAck() {
+#define TransactonTime  0.000008
+uint8_t PmcuSpi::DownGetAck(float timeout) {
     Spi::SendReceive(spi, 0);
-    uint8_t r = 0, i = 0;
-    while ((r != 0x79) && (r != 0x1F) && (++i < 10)) r = Spi::SendReceive(spi, 0xAA);
+    uint32_t i = 0, repeat = timeout ? (uint32_t)ceil(timeout/TransactonTime) : 10;
+    uint8_t r = 0;
+    while ((r != 0x79) && (r != 0x1F) && (++i < repeat)) {
+        r = Spi::SendReceive(spi, 0);
+    }
     Spi::SendReceive(spi, 0x79);
-    return r == 0x79;
+    dllog[ilog++] = r;
+    if (ilog == 1024) ilog = 0;
+    dllog[ilog++] = i;
+    if (ilog == 1024) ilog = 0;
+    if (r == 0x79)
+    	return 1;
+    else if (r != 0x1F)
+    	return 0;
+    else
+    	return 0;
 }
 uint8_t PmcuSpi::DownSynchro() {
     while (1) {
         Spi::SendReceive(spi, 0x5A);
-        if (DownGetAck()) return 1;
+        if (DownGetAck(0)) {
+                dllog[ilog++] = 1;
+                if (ilog == 1024) ilog = 0;
+            return 1;
+        }
     }
+                dllog[ilog++] = 0;
+                if (ilog == 1024) ilog = 0;
     return 0;
 }
 uint8_t PmcuSpi::DownCommand(uint8_t com) {
     Spi::SendReceive(spi, 0x5A);
     Spi::SendReceive(spi, com);
     Spi::SendReceive(spi, ~com);
-    return DownGetAck();
+    return DownGetAck(0);
 }
 uint8_t PmcuSpi::DownAddress(uint32_t addr) {
     uint8_t cs = 0, c;
@@ -255,20 +280,37 @@ uint8_t PmcuSpi::DownAddress(uint32_t addr) {
         cs ^= c;
     }
     Spi::SendReceive(spi, cs);
-    return DownGetAck();
+    return DownGetAck(0);
 }
-uint8_t PmcuSpi::DownChunk(uint8_t* buf, int count, uint32_t addr) {
-    if (!DownCommand(0x31)) return 0;   // write memory
-    if (!DownAddress(addr)) return 0;
-    uint8_t c = (uint8_t)((count - 1) & 0x000000FF);
-    Spi::SendReceive(spi, c);
-    uint8_t cs = c;
+uint8_t PmcuSpi::DownBlock(uint8_t* buf, int count, uint8_t cs) {
     for (int i = 0; i < count; i++) {
         Spi::SendReceive(spi, *buf);
         cs ^= *buf++;
     }
     Spi::SendReceive(spi, cs);
-    return DownGetAck();
+}
+uint8_t PmcuSpi::DownChunk(uint8_t* buf, int count, uint32_t addr) {
+                dllog[ilog++] = 0x31;
+                if (ilog == 1024) ilog = 0;
+                dllog[ilog++] = addr;
+                if (ilog == 1024) ilog = 0;
+    if (!DownCommand(0x31)) {
+                dllog[ilog++] = 0;
+                if (ilog == 1024) ilog = 0;
+        return 0;   // write memory
+    }
+    if (!DownAddress(addr)) {
+                dllog[ilog++] = 1;
+                if (ilog == 1024) ilog = 0;
+        return 0;
+    }
+    uint8_t c = (uint8_t)((count - 1) & 0x000000FF);
+    Spi::SendReceive(spi, c);
+    DownBlock(buf, count, c);
+    uint8_t r = DownGetAck(1);
+                dllog[ilog++] = r;
+                if (ilog == 1024) ilog = 0;
+    return r;
 }
 uint8_t PmcuSpi::Download(uint8_t* buf, int count, uint32_t addr) {
     DownSynchro();
@@ -280,6 +322,13 @@ uint8_t PmcuSpi::Download(uint8_t* buf, int count, uint32_t addr) {
     }
     return 1;
 }
+uint8_t PmcuSpi::DownValidate(uint32_t addr, uint32_t count, uint32_t cs) {
+    if (!DownCommand(0xA2)) return 0;   // validate
+    uint32_t b[] = { addr, count, cs};
+    DownBlock((uint8_t*)b, 12, 0);
+    uint8_t r = DownGetAck(1);
+    return r;
+}
 uint8_t PmcuSpi::DownStart(uint32_t addr) {
     if (!DownCommand(0x21)) return 0;   // go
     if (!DownAddress(addr)) return 0;
@@ -290,16 +339,24 @@ void PmcuSpiInit() {
     pmcu[0].Init(0, 2, 4); pmcu[1].Init(1, 5, 6);
 }
 
-void PmcuDownload() {
+void PmcuUpgrade() {
     extern int32_t _spmcu, _epmcu;
-    uint64_t *_s = (uint64_t*)&_spmcu, *_e = (uint64_t*)&_epmcu;
-    while (*(_e - 1) == 0xFFFFFFFFFFFFFFFF) _e--;
-    int len = (_e - _s) << 3;
+    uint32_t *_s = (uint32_t*)&_spmcu, *_e = (uint32_t*)&_epmcu;
+    // while (*(_e - 1) == 0xFFFFFFFFFFFFFFFF) _e--;
+    int len = (_e - _s) << 2;
+    uint32_t cs = FlashCalculateCrc(_s, len);
     GPIOF->BSRR = 0x00004040;                  // F6/14 = 1 (NSS)
     pmcu[0].DownInit(0, 2); pmcu[1].DownInit(1, 5);
     GPIOF->BSRR = 0x40400000;                  // F6/14 = 0 (NSS)
-    // pmcu[0].Download((uint8_t*)&_spmcu, len, 0x08002000);
-    pmcu[1].Download((uint8_t*)&_spmcu, len, 0x08002000);
+    if (!pmcu[0].DownValidate(0x08002000, len, cs)) {
+        // pmcu[0].Download((uint8_t*)_s, len, 0x08002000);
+        // PmcuFailure[0] = !pmcu[0].DownValidate(0x08002000, len, cs);
+    }
+    if (!pmcu[1].DownValidate(0x08002000, len, cs)) {
+        pmcu[1].Download((uint8_t*)_s, len, 0x08002000);
+        PmcuFailure[1] = !pmcu[1].DownValidate(0x08002000, len, cs);
+    }
+    // pmcu[0].DownStart(0x08002000);
     pmcu[1].DownStart(0x08002000);
     GPIOF->BSRR = 0x00004040;                  // F6/14 = 1 (NSS)
 }

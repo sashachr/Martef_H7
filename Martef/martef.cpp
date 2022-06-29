@@ -37,7 +37,7 @@ void MartefInit() {
 	ThreadsInit();
     FlashGetInitArea();
 	PinsInit();
-    PmcuDownload();
+    PmcuUpgrade();
     PmcuSpiInit();
 	SysTickInit();
     EthInit();

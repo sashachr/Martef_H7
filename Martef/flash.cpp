@@ -122,7 +122,7 @@ uint32_t FlashDiscardFirmware() {
     return flashProgram(FirmwareAddr + 0x0020, &invalidflag, 4);
 }
 
-uint32_t flashCalculateCrc(void* start, int bytes) {
+uint32_t FlashCalculateCrc(void* start, int bytes) {
     FLASH->CR1 = 0x00008000;            // Enable CRC
     FLASH->CRCCR1 = 0x000e0000;         // Clean CRC
     FLASH->CRCSADD1 = (uint32_t)start - 0x08000000;
@@ -145,11 +145,11 @@ uint32_t flashCalculateCrc(void* start, int bytes) {
 }
 
 uint8_t FlashValidateFirmware() {
-    return flashCalculateCrc((uint32_t*)FirmwareStart, *((uint32_t*)FirmwareAddr + 1)) != *(uint32_t*)FirmwareAddr;
+    return FlashCalculateCrc((uint32_t*)FirmwareStart, *((uint32_t*)FirmwareAddr + 1)) != *(uint32_t*)FirmwareAddr;
 }
 
 uint8_t FlashValidateUpgrade() {
-    return flashCalculateCrc((uint32_t*)UpgradeCacheStart, *((uint32_t*)UpgradeCacheAddr + 1)) != *(uint32_t*)UpgradeCacheAddr;
+    return FlashCalculateCrc((uint32_t*)UpgradeCacheStart, *((uint32_t*)UpgradeCacheAddr + 1)) != *(uint32_t*)UpgradeCacheAddr;
 }
 
 uint32_t FlashSaveInitArea() {

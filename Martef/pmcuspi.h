@@ -40,7 +40,10 @@ class Spi {
         spi->CFG1 = CFG1; 
         spi->CFG2 = CFG2; 
         spi->CR2 = CR2; 
-        spi->CR1 = CR1; 
+        if (CR1 & 0x00000001) {
+            spi->CR1 = CR1 & ~0x00000200;
+            if (CR1 & 0x00000200) spi->CR1 = CR1;
+        }
     }
     public: static void Stop(SPI_TypeDef* spi) { spi->CR1 &= ~0x00000201; spi->CFG1 & ~0x0000c000; spi->IFCR = 0x00000FF8; }
     public: static void Start(SPI_TypeDef* spi) { uint32_t c = spi->CR1; spi->CR1 = c | 1; spi->CR1 = c | 0x00000201; }
@@ -49,7 +52,7 @@ class Spi {
     public: static uint8_t SendReceive(SPI_TypeDef* spi, uint8_t b) { 
         *(uint8_t*)&spi->TXDR = b; 
         Start(spi);
-        while ((spi->SR & 0x00001000) == 0) ;   // wait for transfer end
+        while ((spi->SR & 0x00000001) == 0) ;   // wait for transfer end
         uint8_t r = *(uint8_t*)&spi->RXDR;
         return r;
     }
@@ -107,18 +110,20 @@ class PmcuSpi {
 
     // Support of downloading PMCU firmware
     void DownInit(uint8_t ind, uint8_t ispi);
-    uint8_t DownGetAck();
+    uint8_t DownGetAck(float timeout);
     uint8_t DownSynchro();
     uint8_t DownCommand(uint8_t com);
     uint8_t DownAddress(uint32_t addr);
+    uint8_t DownBlock(uint8_t* buf, int count, uint8_t cs);
     uint8_t DownChunk(uint8_t* buf, int count, uint32_t addr);
     uint8_t Download(uint8_t* buf, int count, uint32_t addr);
+    uint8_t DownValidate(uint32_t addr, uint32_t count, uint32_t cs);
     uint8_t DownStart(uint32_t addr);
 };
 
 void PmcuSpiInit();
 void PmcuSpiTickStart();
 void PmcuSpiTickEnd();
-void PmcuDownload();
+void PmcuUpgrade();
 
 
