@@ -645,7 +645,7 @@ void TimeBased::Tick() {
 			} else {
 				if (phase==7) {
 					for (int i = 0; i < Servo->Gnax; i++) {
-						ServoStruct& s = Servo->GroupGetServo(i);
+						// ServoStruct& s = Servo->GroupGetServo(i);
 						// s.RPos = ;
 						GVel = GAcc = 0;
 						phase = 0;
@@ -881,7 +881,7 @@ void Multipoint::Tick() {
 			} else if (phase == 100) {		// Kill
 				for (int i = 0; i < Servo->Gnax; i++) {
 					ServoStruct& s = Servo->GroupGetServo(i);
-					if (s.RVel = 0) {
+					if (s.RVel == 0) {
 						s.Jerk = s.Acc = 0;
 					} else {
 						t = SECONDS_IN_TICK;
@@ -925,7 +925,7 @@ void Reciprocated::Tick() {
 				p = EuclidAndCos(p0, p1, c, Servo->Gbax);
 				v = Servo->Vel; a = Servo->Acc; j = Servo->Jerk;
 				tj = a / j; 
-				if (tj < SECONDS_IN_TICK*0.5F) { tj < SECONDS_IN_TICK*0.5F; j = a / tj; }
+				if (tj < SECONDS_IN_TICK*0.5F) { tj = SECONDS_IN_TICK*0.5F; j = a / tj; }
 				ta = v / a;
 				if (ta < tj) { ta = tj; a = v / ta; j = a / tj; }
 				tv = p / v;
@@ -1092,7 +1092,7 @@ void Reciprocated::Tick() {
 					p = EuclidAndCos(p0, p1, c, Servo->Gbax);
 					v = Servo->Vel; a = Servo->Acc; j = Servo->Jerk;
 					tj = a / j; 
-					if (tj < SECONDS_IN_TICK*0.5F) { tj < SECONDS_IN_TICK*0.5F; j = a / tj; }
+					if (tj < SECONDS_IN_TICK*0.5F) { tj = SECONDS_IN_TICK*0.5F; j = a / tj; }
 					ta = v / a;
 					if (ta < tj) { ta = tj; a = v / ta; j = a / tj; }
 					tv = p / v;
@@ -1106,7 +1106,7 @@ void Reciprocated::Tick() {
 			} else if (phase == 100) {		// Kill
 				for (int i = 0; i < Servo->Gnax; i++) {
 					ServoStruct& s = Servo->GroupGetServo(i);
-					if (s.RVel = 0) {
+					if (s.RVel == 0) {
 						s.Jerk = s.Acc = 0;
 					} else {
 						t = SECONDS_IN_TICK;

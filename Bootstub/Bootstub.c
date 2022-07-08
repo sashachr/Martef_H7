@@ -56,14 +56,14 @@ uint16_t  uFlashProgram(const uint32_t* flashAddr, const uint32_t* bufAddr, uint
 }
 
 uint32_t uCalculateCrc(void* start, int bytes) {
-    FLASH->CR1 = 0x00008000;            // Enable CRC
-    FLASH->CRCCR1 = 0x000e0000;         // Clean CRC
-    FLASH->CRCSADD1 = (uint32_t)start - 0x08000000;
-    FLASH->CRCEADD1 = (uint32_t)start + bytes - 0x08000000 - 4;
-    FLASH->CRCCR1 = 0x000d0000;         // Start CRC
-    while (FLASH->SR1 & (uint32_t)0x0000001) ;    // While Flash busy
-    uint32_t crc = FLASH->CRCDATA;
-    FLASH->CR1 = 0x00000000;            // Disable CRC
+    // FLASH->CR1 = 0x00008000;            // Enable CRC
+    // FLASH->CRCCR1 = 0x000e0000;         // Clean CRC
+    // FLASH->CRCSADD1 = (uint32_t)start - 0x08000000;
+    // FLASH->CRCEADD1 = (uint32_t)start + bytes - 0x08000000 - 4;
+    // FLASH->CRCCR1 = 0x000d0000;         // Start CRC
+    // while (FLASH->SR1 & (uint32_t)0x0000001) ;    // While Flash busy
+    // uint32_t crc = FLASH->CRCDATA;
+    // FLASH->CR1 = 0x00000000;            // Disable CRC
 
     RCC->AHB4ENR |= 0x00080000;   // Enable CRC unit
     CRC->CR = 1;        // Reset
@@ -101,14 +101,14 @@ int main(void) {
             if (uFlashUnlock() != 0) while (1) ;
             if (uFlashErase(CacheSector) != 0) while (1) ;
             if (uFlashErase(CacheSector + 1) != 0) while (1) ;
-            if (uFlashProgram(CacheChecksum, FwChecksum, *FwLength + 0x0020) != 0) while (1) ;
+            if (uFlashProgram(CacheChecksum, FwChecksum, *FwLength + 0x0080) != 0) while (1) ;
         }
     } else {
         if (cachevalid) {      // Copy to firmware
             if (uFlashUnlock() != 0) while (1) ;
             if (uFlashErase(FirmwareSector) != 0) while (1) ;
             if (uFlashErase(FirmwareSector + 1) != 0) while (1) ;
-            if (uFlashProgram(FwChecksum, CacheChecksum, *CacheLength + 0x0020) != 0) while (1) ;
+            if (uFlashProgram(FwChecksum, CacheChecksum, *CacheLength + 0x0080) != 0) while (1) ;
             fwvalid = (FwIntvec[0] != 0xFFFFFFFF) && (*FwChecksum == uCalculateCrc(FwProductGuid, *FwLength));
         }
     }

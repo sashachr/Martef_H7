@@ -135,7 +135,7 @@ void RamInit(void) {
     while (ram != last) *ram++ = *flash++;
     ram = &_sbss, last = &_ebss;
     while (ram != last) *ram++ = 0;
-    extern int32_t _sramD1init, _eramD1init, _siramD1init, _sramD1zero, _eramD1zero,  _sramD1, _eramD1;
+    extern int32_t _sramD1init, _eramD1init, _siramD1init, _sramD1zero, _eramD1zero;
     ram = (int32_t*)&_sramD1init, last = (int32_t*)&_eramD1init, flash = (int32_t*)&_siramD1init;
     while (ram != last) *ram++ = *flash++;
     ram = &_sramD1zero, last = &_eramD1zero;

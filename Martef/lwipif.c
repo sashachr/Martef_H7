@@ -24,6 +24,7 @@
 #include "lwip/timeouts.h"
 #include "lwip/netif.h"
 #include "lwip/dhcp.h"
+#include "lwip/udp.h"
 #include "netif/etharp.h"
 #include "lan8742.h"
 #include "global.h"
@@ -553,6 +554,10 @@ void ethernet_link_check_state(struct netif *netif)
   }
 }
 
+void lwip_init(void);
+void ethernet_link_status_updated(struct netif *netif);
+void udp_echoserver_init(void);
+
 void EthInit(void)
 {
   lwip_init();
@@ -587,6 +592,8 @@ void EthInit(void)
 #endif
   udp_echoserver_init();
 }
+
+void Ethernet_Link_Periodic_Handle(struct netif *netif);
 
 void EthTick() {
     ethernetif_input(&gnetif);
@@ -806,6 +813,7 @@ uint8_t EthSend() {
   // tbuf->len = tbuf->tot_len = ETH_TX_BUFFER_SIZE;
   Trace((uint32_t)tbuf | 0x80000000); 
   pbuf_free(tbuf);
+  return res;
 }
 void EthTxEnd() {
     udp_disconnect(tpcb);

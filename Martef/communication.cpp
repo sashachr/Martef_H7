@@ -173,6 +173,7 @@ int CommUart::StartRead() {
 int CommUart::StartWrite() {
     Trans.BuCount = Trans.ByCount = 0;
     ContinueWrite();
+    return 0;
 }
 
 int CommUart::ContinueWrite() {

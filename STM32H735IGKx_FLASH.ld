@@ -77,14 +77,6 @@ SECTIONS
     . = ALIGN(4);
   } >FLASH_FIRMWARE
 
-  /* Absolute IDS table */
-  .absolute_ids :
-  {
-    . = ALIGN(4);
-    KEEP(*(.absolute_ids)) /* Links to Firmware identificators in absolute positions */
-    . = ALIGN(4);
-  } >FLASH_IDS
-
   /* The program code and other data goes into FLASH_FIRMWARE */
   .text :
   {
@@ -148,7 +140,7 @@ SECTIONS
     KEEP(*(.pmcu))
     . = ALIGN(8);
     _epmcu = .;
-  } >FLASH_FIRMWARE
+  } >FLASH_FIRMWARE =0xFF
 
   /* used by the startup to initialize data */
   _sidata = LOADADDR(.data);

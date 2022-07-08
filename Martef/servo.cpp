@@ -66,7 +66,7 @@ void ServoStruct::Init(uint8_t index) {
     Ploop.Pi.Kp = 50; Ploop.Pi.Ki = 0; Ploop.Pi.Li = 0;
     Vloop.Pi.Kp = 500; Vloop.Pi.Ki = 150; Vloop.Pi.Li = 60;
     Cdloop.Pi.Kp = Cqloop.Pi.Kp = 0.2; Cdloop.Pi.Ki = Cqloop.Pi.Ki = 1000; Cdloop.Pi.Li = Cqloop.Pi.Li = 80;
-    float bq[] = {100.0F, 0.7F};    // Bandwidth 700 Hz, Damping 0.7
+//    float bq[] = {100.0F, 0.7F};    // Bandwidth 700 Hz, Damping 0.7
     for (int i = 0; i < 4; i++) {
     	Vloop.Bq[i].P0 = 700.F; Vloop.Bq[i].P1 = 0.7F;
     	Vloop.Bq[i].Config(0);
@@ -86,7 +86,7 @@ void ServoStruct::Init(uint8_t index) {
 
 uint32_t ServoStruct::GetError(uint32_t fault, uint8_t severity) {
     uint32_t f = fault & ((severity == 3) ? FaultDisable : (severity == 1) ? FaultKill : 0);
-    for (int i=0, j=1; i<32; i++, j<<1) if (f & j) return errors[i];
+    for (int i=0, j=1; i<32; i++, j<<=1) if (f & j) return errors[i];
     return FLT_UNKNOWN;
 }
 void ServoStruct::SetError(uint32_t error, uint8_t severity) { 
@@ -102,7 +102,7 @@ void ServoStruct::SetFault(uint32_t fault, uint32_t error) {
     if (error) {
         Error = error;
     } else {
-        for (int i=31; i > 0; i--, fault<<1) if (fault & 0x80000000) {Error = errors[i]; break;}
+        for (int i=31; i > 0; i--, fault<<=1) if (fault & 0x80000000) {Error = errors[i]; break;}
     }
     if (Severity > 0) {
         SetSignalRout(0, 0);
@@ -243,7 +243,7 @@ void ServoStruct::Tick() {
     uint32_t severity = (Fault & FaultDisable) ? 3 : (Fault & FaultKill) ? 1 : 0;
     if (severity > Severity) {
         SetError(GetError(Fault, severity), severity);
-        for (int i=0, j=1; i < NAX; i++, j<<1) if (RelatedAxes & j) Servo[i].SetError(FLT_INDUCED, severity);
+        for (int i=0, j=1; i < NAX; i++, j<<=1) if (RelatedAxes & j) Servo[i].SetError(FLT_INDUCED, severity);
     }
     Motion->Tick();
     if (!IsPosLoopEnabled()) {
@@ -318,7 +318,7 @@ int32_t ServoStruct::FifoWrite(float* buf, uint16_t cnt) {
 int8_t ServoStruct::FifoRead(float* buf) {
     if (GfCnt == 0) return 0;
     float* f = Gfifo + GfFirst * GfSlot;
-    for (int i = 0; i < GfSlot; i++) *buf++ = *f++;
+    for (uint32_t i = 0; i < GfSlot; i++) *buf++ = *f++;
     if (++GfFirst == GfDep) GfFirst = 0;
     GfCnt--; GfFree++; 
     return 1;

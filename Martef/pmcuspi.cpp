@@ -117,7 +117,7 @@ PmcuSpi pmcu[NAX];
 static uint32_t trace[1024];
 static uint32_t itrace;
 static uint32_t nexti(uint32_t i) { if (++i == 1024) i = 0; return i; }
-static uint32_t previ(uint32_t i) { if (i-- == 0) i = 1023; return i; }
+//static uint32_t previ(uint32_t i) { if (i-- == 0) i = 1023; return i; }
 static void Trace(uint32_t t) {trace[itrace] = (uint32_t)t; itrace = nexti(itrace);}
 
 void PmcuSpi::Init(uint8_t ind, uint8_t ispi, uint8_t idma) {
@@ -141,9 +141,9 @@ void PmcuSpi::Init(uint8_t ind, uint8_t ispi, uint8_t idma) {
 }
 
 void PmcuSpi::TickStart() {
-	uint32_t flg, rndtr, tndtr;
+//	uint32_t flg, rndtr, tndtr;
 	if (index == 0) {
-		flg = *rxFlags; rndtr = rxStream->NDTR; tndtr = txStream->NDTR;
+//		flg = *rxFlags; rndtr = rxStream->NDTR; tndtr = txStream->NDTR;
 		cnt++;
 	}
     Valid = IsReadComplete();
@@ -210,7 +210,10 @@ void PmcuSpi::EncipherCommand(uint32_t* buf) {
     if (++iTick >= 10) iTick = 0;
 }
 
+uint8_t PmcuDisable;
+
 void PmcuSpiTickStart() {
+    if (PmcuDisable) return;
     GPIOF->BSRR = 0x00004040;                  // F6/14 = 1 (NSS)
     for (int i=0; i<2; i++) pmcu[i].TickStart();
     GPIOF->BSRR = 0x40400000;                  // F6/14 = 0 (NSS)
@@ -218,14 +221,15 @@ void PmcuSpiTickStart() {
     for (int i=0; i<2; i++) if (pmcu[i].Valid) pmcu[i].DecipherReport();
 }
 void PmcuSpiTickEnd() {
+    if (PmcuDisable) return;
     for (int i=0; i<2; i++) pmcu[i].TickEnd();
 }
 
 // ------------------ Start up validation/downloading
 
 uint8_t PmcuFailure[6];
-static uint32_t dllog[1024];
-static uint32_t ilog;
+//static uint32_t dllog[1024];
+//static uint32_t ilog;
 
 void PmcuSpi::DownInit(uint8_t ind, uint8_t ispi) {
     index  = ind;
@@ -242,10 +246,6 @@ uint8_t PmcuSpi::DownGetAck(float timeout) {
         r = Spi::SendReceive(spi, 0);
     }
     Spi::SendReceive(spi, 0x79);
-    dllog[ilog++] = r;
-    if (ilog == 1024) ilog = 0;
-    dllog[ilog++] = i;
-    if (ilog == 1024) ilog = 0;
     if (r == 0x79)
     	return 1;
     else if (r != 0x1F)
@@ -254,33 +254,30 @@ uint8_t PmcuSpi::DownGetAck(float timeout) {
     	return 0;
 }
 uint8_t PmcuSpi::DownSynchro() {
-    while (1) {
+    uint32_t i = 0, repeat = (uint32_t)ceil(0.5/(TransactonTime*10));
+    while (++i < repeat) {
         Spi::SendReceive(spi, 0x5A);
-        if (DownGetAck(0)) {
-                dllog[ilog++] = 1;
-                if (ilog == 1024) ilog = 0;
+        if (DownGetAck()) {
             return 1;
         }
     }
-                dllog[ilog++] = 0;
-                if (ilog == 1024) ilog = 0;
     return 0;
 }
 uint8_t PmcuSpi::DownCommand(uint8_t com) {
     Spi::SendReceive(spi, 0x5A);
     Spi::SendReceive(spi, com);
     Spi::SendReceive(spi, ~com);
-    return DownGetAck(0);
+    return DownGetAck();
 }
 uint8_t PmcuSpi::DownAddress(uint32_t addr) {
     uint8_t cs = 0, c;
     for (int i = 0; i < 4; i++) {
-        uint8_t c = (uint8_t)((addr >> (24 - i*8)) & 0x000000FF);
+        c = (uint8_t)((addr >> (24 - i*8)) & 0x000000FF);
         Spi::SendReceive(spi, c);
         cs ^= c;
     }
     Spi::SendReceive(spi, cs);
-    return DownGetAck(0);
+    return DownGetAck();
 }
 uint8_t PmcuSpi::DownBlock(uint8_t* buf, int count, uint8_t cs) {
     for (int i = 0; i < count; i++) {
@@ -288,32 +285,22 @@ uint8_t PmcuSpi::DownBlock(uint8_t* buf, int count, uint8_t cs) {
         cs ^= *buf++;
     }
     Spi::SendReceive(spi, cs);
+    return 1;
 }
 uint8_t PmcuSpi::DownChunk(uint8_t* buf, int count, uint32_t addr) {
-                dllog[ilog++] = 0x31;
-                if (ilog == 1024) ilog = 0;
-                dllog[ilog++] = addr;
-                if (ilog == 1024) ilog = 0;
     if (!DownCommand(0x31)) {
-                dllog[ilog++] = 0;
-                if (ilog == 1024) ilog = 0;
         return 0;   // write memory
     }
     if (!DownAddress(addr)) {
-                dllog[ilog++] = 1;
-                if (ilog == 1024) ilog = 0;
         return 0;
     }
     uint8_t c = (uint8_t)((count - 1) & 0x000000FF);
     Spi::SendReceive(spi, c);
     DownBlock(buf, count, c);
-    uint8_t r = DownGetAck(1);
-                dllog[ilog++] = r;
-                if (ilog == 1024) ilog = 0;
+    uint8_t r = DownGetAck(0.1);
     return r;
 }
 uint8_t PmcuSpi::Download(uint8_t* buf, int count, uint32_t addr) {
-    DownSynchro();
     while (count > 0) {
         int c = (count < 256) ? count : 256;
         if (!DownChunk(buf, c, addr))
@@ -326,7 +313,7 @@ uint8_t PmcuSpi::DownValidate(uint32_t addr, uint32_t count, uint32_t cs) {
     if (!DownCommand(0xA2)) return 0;   // validate
     uint32_t b[] = { addr, count, cs};
     DownBlock((uint8_t*)b, 12, 0);
-    uint8_t r = DownGetAck(1);
+    uint8_t r = DownGetAck(0.1);
     return r;
 }
 uint8_t PmcuSpi::DownStart(uint32_t addr) {
@@ -346,18 +333,21 @@ void PmcuUpgrade() {
     int len = (_e - _s) << 2;
     uint32_t cs = FlashCalculateCrc(_s, len);
     GPIOF->BSRR = 0x00004040;                  // F6/14 = 1 (NSS)
-    pmcu[0].DownInit(0, 2); pmcu[1].DownInit(1, 5);
+    pmcu[0].DownInit(0, 2); 
+    pmcu[1].DownInit(1, 5);
     GPIOF->BSRR = 0x40400000;                  // F6/14 = 0 (NSS)
+    PmcuFailure[0] |= !pmcu[0].DownSynchro();
     if (!pmcu[0].DownValidate(0x08002000, len, cs)) {
-        // pmcu[0].Download((uint8_t*)_s, len, 0x08002000);
-        // PmcuFailure[0] = !pmcu[0].DownValidate(0x08002000, len, cs);
+        PmcuFailure[0] |= !pmcu[0].Download((uint8_t*)_s, len, 0x08002000);
+        PmcuFailure[0] |= !pmcu[0].DownValidate(0x08002000, len, cs);
     }
+    PmcuFailure[1] |= !pmcu[1].DownSynchro();
     if (!pmcu[1].DownValidate(0x08002000, len, cs)) {
-        pmcu[1].Download((uint8_t*)_s, len, 0x08002000);
-        PmcuFailure[1] = !pmcu[1].DownValidate(0x08002000, len, cs);
+        PmcuFailure[1] |= !pmcu[1].Download((uint8_t*)_s, len, 0x08002000);
+        PmcuFailure[1] |= !pmcu[1].DownValidate(0x08002000, len, cs);
     }
-    // pmcu[0].DownStart(0x08002000);
-    pmcu[1].DownStart(0x08002000);
+    PmcuFailure[0] |= !pmcu[0].DownStart(0x08002000);
+    PmcuFailure[1] |= !pmcu[1].DownStart(0x08002000);
     GPIOF->BSRR = 0x00004040;                  // F6/14 = 1 (NSS)
 }
 

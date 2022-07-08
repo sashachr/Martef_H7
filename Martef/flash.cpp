@@ -81,7 +81,7 @@ uint32_t flashProgramEnd() {
 uint32_t  flashProgram(uint32_t FlashAddr, uint32_t *BufAddr, uint32_t Length) {
     FLASH->CCR1 = ((uint32_t)0x1FEF0000);   // Clear errors
     FLASH->CR1 = (uint32_t)0x00000022;           // Program, word size
-    for (int i = 0; i < Length >> 2; i++, FlashAddr += 4, BufAddr++) {
+    for (uint32_t i = 0; i < Length >> 2; i++, FlashAddr += 4, BufAddr++) {
         *(uint32_t*)FlashAddr = *BufAddr;    
         while (FLASH->SR1 & (uint32_t)0x0000001) ;    // While Flash busy
         uint32_t r = (uint16_t)(FLASH->SR1 & (uint32_t)0x17EE0000);   // Error flags
@@ -123,21 +123,20 @@ uint32_t FlashDiscardFirmware() {
 }
 
 uint32_t FlashCalculateCrc(void* start, int bytes) {
-    FLASH->CR1 = 0x00008000;            // Enable CRC
-    FLASH->CRCCR1 = 0x000e0000;         // Clean CRC
-    FLASH->CRCSADD1 = (uint32_t)start - 0x08000000;
-    FLASH->CRCEADD1 = (uint32_t)start + bytes - 0x08000000 - 4;
-    FLASH->CRCCR1 = 0x000d0000;         // Start CRC
-    while (FLASH->SR1 & (uint32_t)0x0000001) ;    // While Flash busy
-    uint32_t crc = FLASH->CRCDATA;
-    FLASH->CR1 = 0x00000000;            // Disable CRC
-
+//    FLASH->CR1 = 0x00008000;            // Enable CRC
+//    FLASH->CRCCR1 = 0x000e0000;         // Clean CRC
+//    FLASH->CRCSADD1 = (uint32_t)start - 0x08000000;
+//    FLASH->CRCEADD1 = (uint32_t)start + bytes - 0x08000000 - 4;
+//    FLASH->CRCCR1 = 0x000d0000;         // Start CRC
+//    while (FLASH->SR1 & (uint32_t)0x0000001) ;    // While Flash busy
+//    uint32_t crc = FLASH->CRCDATA;
+//    FLASH->CR1 = 0x00000000;            // Disable CRC
     RCC->AHB4ENR |= 0x00080000;   // Enable CRC unit
     CRC->CR = 1;        // Reset
     while (CRC->CR == 1) ;
     uint32_t* w = (uint32_t*)start;
     uint32_t words = (bytes + 3) / 4;
-    for (int i=0; i<words; i++) CRC->DR = *w++;
+    for (uint32_t i=0; i<words; i++) CRC->DR = *w++;
     uint32_t crc1 = CRC->DR;
     RCC->AHB4ENR &= ~0x00080000;   // Disable CRC unit
    

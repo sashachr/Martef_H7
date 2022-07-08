@@ -7,6 +7,7 @@
 
 #include "global.h"
 #include "sysvar.h"
+#include "pmcuspi.h"
 #include "flash.h"
 #include "communication.h"
 #include "command.h"
@@ -276,6 +277,7 @@ GPIOF->BSRR = 0x20000000;                  // F13 = 0
             switch (op) {
                 case 1:    // Erase
         			if (clen != 12) BREAK(MRE_FORMAT)
+					PmcuDisable = 1;
 					if (FlashUpgradeErase() != 0) BREAK(MRE_FLASHERASEFAILED)
                     break;
                 case 2:     // Write

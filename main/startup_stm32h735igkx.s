@@ -310,7 +310,7 @@ g_pfnVectors:
   
 .section .pmcu,"a",%progbits
 PmcuFirmware:
-.incbin "C:\\Projects\\XactRobotics\\MartefH7\\MG4-fw\\Debug\\MarticG4.bin"
+.incbin "MarticG4.bin"
 
 /*******************************************************************************
 *

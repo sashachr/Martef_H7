@@ -39,21 +39,21 @@
 // 	}
 // 	return count;
 // }
-static int32_t RwBit(uint16_t ind, uint16_t count, uint32_t* buf, uint32_t* var, uint32_t bit) {
-	uint32_t* v = var + ind;
-  	if (count == 1) { 	// Read
-	  	*buf = (*v & bit) != 0;
-  	} else if (count == -1) { 	// Write
-	  	count = 1;
-	  	if (*buf) *v |= bit; else *v &= ~bit;
-  	} else if (count > 0) { 	// Read
-	  	for (int i=0; i<count; i++) *buf++ = (*v++ & bit) != 0;
-	} else {    // Write
-	  	count = -count;
-	  	for (int i=0; i<count; i++) if (*buf++) *v++ |= bit; else *v++ &= ~bit;
-	}
-	return count;
-}
+//static int32_t RwBit(uint16_t ind, uint16_t count, uint32_t* buf, uint32_t* var, uint32_t bit) {
+//	uint32_t* v = var + ind;
+//  	if (count == 1) { 	// Read
+//	  	*buf = (*v & bit) != 0;
+//  	} else if (count == -1) { 	// Write
+//	  	count = 1;
+//	  	if (*buf) *v |= bit; else *v &= ~bit;
+//  	} else if (count > 0) { 	// Read
+//	  	for (int i=0; i<count; i++) *buf++ = (*v++ & bit) != 0;
+//	} else {    // Write
+//	  	count = -count;
+//	  	for (int i=0; i<count; i++) if (*buf++) *v++ |= bit; else *v++ &= ~bit;
+//	}
+//	return count;
+//}
 //static int32_t RwLinearMode(uint16_t ind, int16_t count, uint32_t* buf) {return RwBit(ind, count, buf, &Servo.Mode, SM_LINEAR);}
 //static int32_t RwUhrMode(uint16_t ind, int16_t count, uint32_t* buf) {return RwBit(ind, count, buf, &Servo.Mode, SM_UHR);}
 //static int32_t RwDcMode(uint16_t ind, int16_t count, uint32_t* buf) {return RwBit(ind, count, buf, &Servo.Mode, SM_DC);}
@@ -144,7 +144,7 @@ int32_t FlashSave(uint16_t ind, int16_t count, uint32_t* buf) {
     }
 #define StructScalarDirectReadWrite(struc, var) \
     StructScalarDirectRead(struc, var), \
-    [](uint16_t ind, uint16_t count, int32_t* buf) -> int32_t { *(int32_t*)&struc.var = *buf++; }
+    [](uint16_t ind, uint16_t count, int32_t* buf) -> int32_t { *(int32_t*)&struc.var = *buf++; return 1; }
 
 #define StructScalarDirectReadArray(struc, var, maxind) \
     [](uint16_t i)->int32_t* {return (int32_t*)&struc.var[i];}, \

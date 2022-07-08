@@ -9,7 +9,7 @@
 /*   8                */ {0},
 /*   9                */ {0},
 /*  10 TICK           */ {1, TYPE_UINT32|VF_DIRECTREAD|VF_DIRECTWRITE, StructScalarDirectReadWrite(Time, Tick)},
-/*  11 TIME           */ {1, TYPE_FLOAT|VF_PROPREAD|VF_PROPWRITE, 0, [](uint16_t, uint16_t, int32_t* buf) -> int32_t { *(float*)buf = Time.GetTime(); }, [](uint16_t, uint16_t count, int32_t* buf) -> int32_t { Time.SetTime(*(float*)buf); return 1; }},
+/*  11 TIME           */ {1, TYPE_FLOAT|VF_PROPREAD|VF_PROPWRITE, 0, [](uint16_t, uint16_t, int32_t* buf) -> int32_t { *(float*)buf = Time.GetTime(); return 1; }, [](uint16_t, uint16_t count, int32_t* buf) -> int32_t { Time.SetTime(*(float*)buf); return 1; }},
 /*  12                */ {0},
 /*  13                */ {0},
 /*  14                */ {0},

@@ -12,7 +12,6 @@
 #define StackAreaSize	(ThreadStackSize * (MaxThreads/* - 1*/))
 //#define DefaultThread	(MaxThreads - 1)
 
-#pragma location=".ccmram"
 uint32_t stackArea[StackAreaSize]; // __attribute__((section(".ccmram")));
 
 //struct ThreadDesc {

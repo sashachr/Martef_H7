@@ -14,6 +14,7 @@ uint32_t SysTickInit() {
 }
 uint32_t SysTickIntDisable() {
 	SysTick->CTRL &= ~0x00000002;
+	return 0;
 }
 
 //extern "C" __thumb void SysTick_Handler();
